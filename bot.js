@@ -1,5 +1,5 @@
 
-const { Bot, session, MemorySessionStorage, Keyboard, InlineKeyboard, InputFile } = require("grammy");
+const { Bot, session, MemorySessionStorage, Keyboard, InlineKeyboard, InputFile, InputMediaDocument, InputMediaBuilder } = require("grammy");
 const { Menu, MenuRange } = require("@grammyjs/menu");
 const {
     conversations,
@@ -14,8 +14,9 @@ const Database = require("./db");
 const bot_token = process.env.BOT_TOKEN;
 const DEV_ID = 5604998397;
 const AUTHOR_ID = null;
-const ACTION_GROUP_ID = 423423;
-const ERROR_LOG_ID = 234423;
+const ACTION_GROUP_ID = -963886772;
+const ERROR_LOG_ID = -927838041;
+const Database_channel_id = -1001908517057;
 
 const bot = new Bot(bot_token);
 
@@ -38,6 +39,13 @@ bot.use(session({
             return {
                 our_service_list: [],
                 selected_service: null,
+                task: {
+                    edsp_file_id: null,
+                    edsp_cer_file_id: null,
+                    password: null,
+                    task_file: null,
+                    comment: null,
+                }
             }
         },
         storage: new MemorySessionStorage()
@@ -50,6 +58,7 @@ bot.use(session({
 bot.use(conversations());
 bot.use(createConversation(our_service_conversation));
 bot.use(createConversation(main_menyu_conversation));
+bot.use(createConversation(task_data_conversation));
 
 const pm = bot.chatType("private")
 
@@ -100,9 +109,87 @@ async function main_menyu_conversation(conversation, ctx) {
 }
 
 
+async function task_data_conversation(conversation, ctx) {
+
+    conversation.session.session_db.task.edsp_file_id = null,
+        conversation.session.session_db.task.edsp_cer_file_id = null,
+        conversation.session.session_db.task.password = null,
+        conversation.session.session_db.task.task_file = null,
+        conversation.session.session_db.task.comment = null,
+
+        // EDSP key files
+        await ctx.reply("🔑 EDSP kalitini yuklang");
+
+    ctx = await conversation.wait();
+    if (!ctx.msg.document) {
+        do {
+            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP kalitini yuklang ");
+            ctx = await conversation.wait();
+        } while (!ctx.msg.document);
+    }
+    let file_id = ctx.msg.document.file_id
+    let send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    conversation.session.session_db.task.edsp_file_id = send_msg.document.file_id;
+
+    // EDSP sertificate
+    await ctx.reply("📄 EDSP sertifikatnis  yuklang");
+    ctx = await conversation.wait();
+    if (!ctx.msg.document) {
+        do {
+            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP sertifikatni yuklang ");
+            ctx = await conversation.wait();
+        } while (!ctx.msg.document);
+    }
+    file_id = ctx.msg.document.file_id
+    send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
+
+    // Password
+    await ctx.reply("🔐 Parolni kiriting");
+    ctx = await conversation.wait();
+    if (!ctx.msg.text) {
+        do {
+            await ctx.reply("⚠️ Noto'g'ri ma'lumot kiritildi,\n 🔐 Parolni kiriting ");
+            ctx = await conversation.wait();
+        } while (!ctx.msg.text);
+    }
+    conversation.session.session_db.task.password = ctx.msg.text;
+
+
+    // Employee list file
+    await ctx.reply("📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)");
+    ctx = await conversation.wait();
+    if (!ctx.msg.document) {
+        do {
+            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP sertifikatni yuklang ");
+            ctx = await conversation.wait();
+        } while (!ctx.msg.document);
+    }
+    file_id = ctx.msg.document.file_id
+    send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    conversation.session.session_db.task.task_file = send_msg.document.file_id;
+
+    // Comment text
+    await ctx.reply("💬 Izoh yozing");
+    ctx = await conversation.wait();
+    conversation.session.session_db.task.comment = ctx.msg.text;
+
+    let data = await ctx.session.session_db.task
+
+    // Send message Admin and Channel
+    await SendTask(Database_channel_id, data, ctx);
+
+    await ctx.reply("✅ Sizning zayavkangiz qabul qilindi")
+
+
+
+    return
+}
+
+
 const continue_menu = new Menu("continue_menu")
     .text("♻️ Boshlash", async (ctx) => {
-        ctx.reply("Yuklang...")
+        await ctx.conversation.enter("task_data_conversation");
     });
 pm.use(continue_menu)
 
@@ -158,6 +245,22 @@ pm.use(start_menu);
 
 
 
+async function SendTask(msg_id, data, ctx) {
+    let info_message = await ctx.api.sendMessage(msg_id,
+        `
+    <b>📄 Yangi zayavka</b>
+<b>👨‍💼Yuboruvchi: </b> <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>  
+<b>📆 Sana: </b> ${new Date().toLocaleString()}
+<b>🔐 Parol: </b> <i>${data.password}</i>
+<b>💬 Izoh: </b> <i>${data.comment}</i>
+<b>💵 To'lov summasi: </b> <i>Amalga oshirilmagan </i> ❌
+    `, {
+        parse_mode: "HTML"
+    });
+    ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id), InputMediaBuilder.document(data.task_file)], {
+        reply_to_message_id: info_message.message_id
+    })
+}
 
 
 
@@ -169,8 +272,9 @@ pm.use(start_menu);
 
 
 
-
-
+bot.on("msg", async (ctx) => {
+    console.log(ctx.msg.chat);
+})
 
 
 
@@ -179,6 +283,8 @@ pm.use(start_menu);
 
 pm.command("start", async (ctx) => {
     await ctx.conversation.enter("main_menyu_conversation");
+    // await ctx.conversation.enter("task_data_conversation");
+
 
 });
 
