@@ -56,9 +56,33 @@ bot.use(session({
 
 
 bot.use(conversations());
+
+bot.on("my_chat_member", async (ctx) => {
+    if (ctx.update.my_chat_member.new_chat_member.status == "kicked") {
+        const stats = await ctx.conversation.active();
+        for (let key of Object.keys(stats)) {
+            await ctx.conversation.exit(key);
+        }
+    }
+});
+
+bot.use(async (ctx, next) => {
+    if (ctx.message?.text == "🔙 Asosiy menu" || ctx.message?.text == "♻️ Bizning xizmatlar") {
+        const stats = await ctx.conversation.active();
+        for (let key of Object.keys(stats)) {
+            await ctx.conversation.exit(key);
+        }
+    }
+
+    await next()
+
+})
+
+
 bot.use(createConversation(our_service_conversation));
 bot.use(createConversation(main_menyu_conversation));
 bot.use(createConversation(task_data_conversation));
+bot.use(createConversation(payment_conversation));
 
 const pm = bot.chatType("private")
 
@@ -174,16 +198,40 @@ async function task_data_conversation(conversation, ctx) {
     ctx = await conversation.wait();
     conversation.session.session_db.task.comment = ctx.msg.text;
 
-    let data = await ctx.session.session_db.task
+    let data = await ctx.session.session_db.task;
+    data.report_name = ctx.session.session_db.selected_service.name;
 
     // Send message Admin and Channel
     await SendTask(Database_channel_id, data, ctx);
 
-    await ctx.reply("✅ Sizning zayavkangiz qabul qilindi")
+    await ctx.reply("✅ Buyurtma qabul qilindi!");
+
+    await ctx.reply(`
+    ✅ <i>Xurmatli mijoz buyutmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
+    \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
+    \n<b>💵Tolov summasi: 100.000 so'm</b>
+        
+        `, {
+            parse_mode: "HTML",
+        })
+
 
 
 
     return
+}
+
+async function payment_conversation(conversation, ctx) {
+    await ctx.reply(`
+✅ <i>Xurmatli mijoz buyutmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
+\n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
+\n✅ <i>To'lov </i>
+\n<b>💵Tolov summasi: 100.000 so'm</b>
+    
+    `, {
+        parse_mode: "HTML",
+    })
+
 }
 
 
@@ -199,14 +247,14 @@ const our_service_menu = new Menu("our_service_menu")
         let list = await ctx.session.session_db.our_service_list
         list.forEach((item) => {
             range
-                .text("📄" + item.name, async (ctx) => {
+                .text("🔰 " + item.name, async (ctx) => {
                     ctx.session.session_db.selected_service = item;
                     ctx.deleteMessage();
 
 
 
                     ctx.reply(` 
-                    Tanlangan xizmat turi: <b>${item.name}</b> 
+                    Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
                     \n<i>Vazifani bajarish uchun kerakli fayl va ma'lumotlarni bizga taqdim etishingiz lozim!</i>
                     `, {
                         parse_mode: "HTML",
@@ -224,7 +272,7 @@ pm.use(our_service_menu);
 
 
 const start_menu = new Menu("start_menu")
-    .text("📄 Bizning xizmatlar", async (ctx) => {
+    .text("♻️ Bizning xizmatlar", async (ctx) => {
         await ctx.answerCallbackQuery();
         await ctx.deleteMessage();
         await ctx.conversation.enter("our_service_conversation");
@@ -248,7 +296,8 @@ pm.use(start_menu);
 async function SendTask(msg_id, data, ctx) {
     let info_message = await ctx.api.sendMessage(msg_id,
         `
-    <b>📄 Yangi zayavka</b>
+    <b>✅ Yangi zayavka</b>
+ <b>📄 Hisobot turi: </b> ${data.report_name}
 <b>👨‍💼Yuboruvchi: </b> <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>  
 <b>📆 Sana: </b> ${new Date().toLocaleString()}
 <b>🔐 Parol: </b> <i>${data.password}</i>
@@ -279,14 +328,30 @@ bot.on("msg", async (ctx) => {
 
 
 
+const back_main_menu = new Keyboard()
+    .text("♻️ Bizning xizmatlar")
+    .row()
+    .text("🔙 Asosiy menu")
+    .resized();
 
 
 pm.command("start", async (ctx) => {
+
+    await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
+        reply_markup: back_main_menu
+    });
     await ctx.conversation.enter("main_menyu_conversation");
-    // await ctx.conversation.enter("task_data_conversation");
+    // await ctx.conversation.enter("payment_conversation");
 
 
 });
+
+pm.hears("🔙 Asosiy menu", async (ctx) => {
+    await ctx.conversation.enter("main_menyu_conversation");
+})
+pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
+    await ctx.conversation.enter("our_service_conversation");
+})
 
 
 
