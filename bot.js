@@ -8,6 +8,9 @@ const {
 require('dotenv').config()
 const Database = require("./db");
 
+const {userRegister, removeUser} = require("./controllers/userControllers");
+const {category_list, add_category,remove_category} = require("./controllers/categoryController")
+
 
 
 
@@ -37,7 +40,7 @@ bot.use(session({
     session_db: {
         initial: () => {
             return {
-                our_service_list: [],
+                selected_category: [],
                 selected_service: null,
                 task: {
                     edsp_file_id: null,
@@ -45,7 +48,8 @@ bot.use(session({
                     password: null,
                     task_file: null,
                     comment: null,
-                }
+                },
+
             }
         },
         storage: new MemorySessionStorage()
@@ -63,6 +67,14 @@ bot.on("my_chat_member", async (ctx) => {
         for (let key of Object.keys(stats)) {
             await ctx.conversation.exit(key);
         }
+
+        let data = {
+            user_id: ctx.from.id,
+            firstname:ctx.from.first_name,
+            username:ctx.from.username || null,
+        }
+        
+        await removeUser(data, ctx)
     }
 });
 
@@ -73,7 +85,6 @@ bot.use(async (ctx, next) => {
             await ctx.conversation.exit(key);
         }
     }
-
     await next()
 
 })
@@ -83,6 +94,7 @@ bot.use(createConversation(our_service_conversation));
 bot.use(createConversation(main_menyu_conversation));
 bot.use(createConversation(task_data_conversation));
 bot.use(createConversation(payment_conversation));
+bot.use(createConversation(creating_new_category));
 
 const pm = bot.chatType("private")
 
@@ -91,18 +103,6 @@ const pm = bot.chatType("private")
 
 
 async function our_service_conversation(conversation, ctx) {
-    let service_list = [
-        {
-            name: "JSHDS hisoboti", id: 1
-        },
-        {
-            name: " Aylanma soliq hisoboti", id: 2
-        },
-        {
-            name: "Foyda solig'i hisoboti", id: 3
-        },
-    ];
-    conversation.session.session_db.our_service_list = service_list;
     ctx.reply(`<b>👨‍💻 Biz "Bugalters Group" jamoasi sizga tezkor va sifatli bugalteriya xizmatlarini taklif etadi. </b>
      \n\n<i>Bizning xizmatlar 👇</i>`, {
         reply_markup: our_service_menu,
@@ -111,6 +111,10 @@ async function our_service_conversation(conversation, ctx) {
     return
 
 }
+
+
+
+
 
 
 async function main_menyu_conversation(conversation, ctx) {
@@ -234,6 +238,30 @@ async function payment_conversation(conversation, ctx) {
 
 }
 
+async function creating_new_category(conversation, ctx){
+    await ctx.reply("🔰 Yangi xizmat turini nomini kiriting! \n\n ✍️ <b>Masalan: </b> <i> Mol-mulk va yer solig'i</i>", {
+        parse_mode:"HTML"
+    });
+
+    ctx = await conversation.wait();
+
+    if(!ctx.message?.text){
+        do {
+            await ctx.reply("Noto'g'ri ma'lumot kiritildi! \n\n <b>Masalan: </b> <i> Mol-mulk va yer solig'i</i>", {
+                parse_mode:"HTML"
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.document);
+    }
+
+    let data = {
+        name:ctx.message.text
+    };
+    await add_category(data, ctx);
+    await ctx.reply("✅ Muvofaqiyatli yaratildi");
+    return 
+}
+
 
 const continue_menu = new Menu("continue_menu")
     .text("♻️ Boshlash", async (ctx) => {
@@ -244,15 +272,12 @@ pm.use(continue_menu)
 
 const our_service_menu = new Menu("our_service_menu")
     .dynamic(async (ctx, range) => {
-        let list = await ctx.session.session_db.our_service_list
+        let list = await category_list();
         list.forEach((item) => {
             range
                 .text("🔰 " + item.name, async (ctx) => {
                     ctx.session.session_db.selected_service = item;
                     ctx.deleteMessage();
-
-
-
                     ctx.reply(` 
                     Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
                     \n<i>Vazifani bajarish uchun kerakli fayl va ma'lumotlarni bizga taqdim etishingiz lozim!</i>
@@ -286,9 +311,57 @@ const start_menu = new Menu("start_menu")
 pm.use(start_menu);
 
 
+const action_category_menu = new Menu("action_category_menu")
+   .text("Tahrirlash ✏️", async(ctx)=>{
+    await ctx.answerCallbackQuery();
+    await ctx.reply("Tez orada ishga tushiriladi bu funksiya")
+   })
+   .row()
+   .text("O'chirish 🗑", async (ctx)=>{
+    await ctx.answerCallbackQuery();
+    await ctx.deleteMessage();
+    let selected_category = await ctx.session.session_db.selected_category;
+    await remove_category(selected_category);
+    await ctx.reply("✅ O'chirildi");
+   })
+pm.use(action_category_menu);
+
+
+const admin_category_list = new Menu("admin_category_list")
+    .dynamic(async (ctx, range) => {
+        let list = await category_list();
+        list.forEach((item) => {
+            range
+                .text("🔰 " + item.name, async (ctx) => {
+                    ctx.session.session_db.selected_category = item;
+                    ctx.deleteMessage();
+                    ctx.reply(` 
+                    Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
+                    \n<i>Vazifani bajarish uchun kerakli fayl va ma'lumotlarni bizga taqdim etishingiz lozim!</i>
+                    `, {
+                        parse_mode: "HTML",
+                        reply_markup: action_category_menu,
+                    })
 
 
 
+                })
+                .row();
+        })
+    }).text("➕ Yangi qo'shish", async(ctx)=>{
+        await ctx.answerCallbackQuery()
+        await ctx.conversation.enter("creating_new_category");
+    })
+pm.use(admin_category_list);
+
+
+pm.command("category_list", async (ctx)=>{
+
+    await ctx.reply("🔰 <b>Barcha categoriyalar turi</b>", {
+        reply_markup: admin_category_list,
+        parse_mode: "HTML"
+    })
+})
 
 
 
@@ -321,9 +394,9 @@ async function SendTask(msg_id, data, ctx) {
 
 
 
-bot.on("msg", async (ctx) => {
-    console.log(ctx.msg.chat);
-})
+// bot.on("msg", async (ctx) => {
+//     console.log(ctx.msg.chat);
+// })
 
 
 
@@ -336,6 +409,14 @@ const back_main_menu = new Keyboard()
 
 
 pm.command("start", async (ctx) => {
+
+    let data = {
+        user_id: ctx.from.id,
+        firstname:ctx.from.first_name,
+        username:ctx.from.username || null,
+    }
+    
+    await userRegister(data, ctx)
 
     await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
         reply_markup: back_main_menu
@@ -352,6 +433,7 @@ pm.hears("🔙 Asosiy menu", async (ctx) => {
 pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
     await ctx.conversation.enter("our_service_conversation");
 })
+
 
 
 
