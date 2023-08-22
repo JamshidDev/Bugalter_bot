@@ -8,8 +8,9 @@ const {
 require('dotenv').config()
 const Database = require("./db");
 
-const {userRegister, removeUser} = require("./controllers/userControllers");
-const {category_list, add_category,remove_category} = require("./controllers/categoryController")
+const { userRegister, removeUser } = require("./controllers/userControllers");
+const { category_list, add_category, remove_category } = require("./controllers/categoryController");
+const {create_order, order_list} = require("./controllers/orderControllser");
 
 
 
@@ -70,10 +71,10 @@ bot.on("my_chat_member", async (ctx) => {
 
         let data = {
             user_id: ctx.from.id,
-            firstname:ctx.from.first_name,
-            username:ctx.from.username || null,
+            firstname: ctx.from.first_name,
+            username: ctx.from.username || null,
         }
-        
+
         await removeUser(data, ctx)
     }
 });
@@ -112,30 +113,37 @@ async function our_service_conversation(conversation, ctx) {
 
 }
 
-
-
-
-
-
 async function main_menyu_conversation(conversation, ctx) {
     let client_id = ctx.from.id;
     let photo_url = new InputFile("./resource/picture/start_picture.png");
     ctx.api.sendPhoto(client_id, photo_url, {
-        caption: ` ⚡️<b>Asosiy menu</b>⚡️ \n\n <i>Biz <b>"Bugalters Group"</b> jamoasi sizga tezkor va sifatli bugalteriya xizmatlarini taklif etadi. </i>
-        ✅ <i>Bizning xizmatlar</i>:
-        <b>1️⃣ JSHDS hisoboti</b>
-        <b>2️⃣ Aylanma soliq hisoboti</b>
-        <b>3️⃣ Foyda solig'i hisoboti</b>
-        
-    <i>☝️ Bizning xizmatlardan foydalanish uchun [<b>📄 Bizning xizmatlar</b>] tugmasini bosing!</i>
-    \n <i>☝️ Biz haqimizda batafsil ma'lumot olish uchun [<b>ℹ️ Biz haqimizda</b>] tugmasini bosing!</i>
+        caption: ` ⚡️<b>Asosiy menu</b>⚡️ \n\n 
+❓ Sizda buxgalteriya bilan bog'liq muammolar bormi?
+❓ Soliq tekshiruvlaridan charchadingizmi?
+❓ Xato va kamchiliklar ko'payib ketdimi?
+
+❗️ Endi bu muammo emas !!!
+☝️ Biz sizga o'zimizning sifatli va hamyonbob xizmatlarimizni taklif qilamiz.
+
+👉 Bizning xizmatlarimiz:
+1️⃣ Barcha turdagi korxonalar MCHJ, Oilaviy korxona, Xususiy korxona, YATT ochish, ustav va tasis shartnomalari tuzish va ularni davlat ro'yxatidan o'tkazish.
+
+2️⃣ Chakana va ulgurji savdo, ishlab chiqarish, xizmat ko'rsatish korxonalariga sifatli, tezkor va ishonchli buxgalteriya xizmatlarini ko'rsatish.
+
+3️⃣ Barcha turdagi soliqlarni hisoblash va hisobotlarni topshirish, Soliq maslaxatlari:
+✅ Foyda solig'i
+✅ Qo'shilgan qiymat solig'i (QQS)
+✅ Aylanmadan soliq
+✅ Yer qaridan foydalanganlik uchun soliq
+✅ Jismoniy shaxslardan olinadigan daromad solig'i
+✅ Dividend solig'i
+✅ Mol-mulk va yer solig'i
         `,
         parse_mode: "HTML",
         reply_markup: start_menu
     })
     return
 }
-
 
 async function task_data_conversation(conversation, ctx) {
 
@@ -204,20 +212,33 @@ async function task_data_conversation(conversation, ctx) {
 
     let data = await ctx.session.session_db.task;
     data.report_name = ctx.session.session_db.selected_service.name;
+    let order_data = {
+        service_category:ctx.session.session_db.selected_service._id,
+        edsp_key:data.edsp_file_id,
+        task_file:data.task_file,
+        edsp_cer:data.edsp_cer_file_id,
+        password:data.password,
+        comment:data.comment,
+        client_id:ctx.from.id,
+    }
+    await create_order(order_data)
+
 
     // Send message Admin and Channel
-    await SendTask(Database_channel_id, data, ctx);
+    let sender_list = [Database_channel_id, DEV_ID]
+    for (let index in sender_list) {
+        await SendTask(sender_list[index], data, ctx);
+    }
 
     await ctx.reply("✅ Buyurtma qabul qilindi!");
-
     await ctx.reply(`
-    ✅ <i>Xurmatli mijoz buyutmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
+    ✅ <i>Xurmatli mijoz buyurtmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
     \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
-    \n<b>💵Tolov summasi: 100.000 so'm</b>
+    \n<b>💵To'lov summasi: 100.000 so'm</b>
         
         `, {
-            parse_mode: "HTML",
-        })
+        parse_mode: "HTML",
+    })
 
 
 
@@ -230,36 +251,37 @@ async function payment_conversation(conversation, ctx) {
 ✅ <i>Xurmatli mijoz buyutmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
 \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
 \n✅ <i>To'lov </i>
-\n<b>💵Tolov summasi: 100.000 so'm</b>
-    
+\n<b>💵To'lov summasi: 100.000 so'm</b>
     `, {
         parse_mode: "HTML",
     })
 
+    return
+
 }
 
-async function creating_new_category(conversation, ctx){
+async function creating_new_category(conversation, ctx) {
     await ctx.reply("🔰 Yangi xizmat turini nomini kiriting! \n\n ✍️ <b>Masalan: </b> <i> Mol-mulk va yer solig'i</i>", {
-        parse_mode:"HTML"
+        parse_mode: "HTML"
     });
 
     ctx = await conversation.wait();
 
-    if(!ctx.message?.text){
+    if (!ctx.message?.text) {
         do {
             await ctx.reply("Noto'g'ri ma'lumot kiritildi! \n\n <b>Masalan: </b> <i> Mol-mulk va yer solig'i</i>", {
-                parse_mode:"HTML"
+                parse_mode: "HTML"
             });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
 
     let data = {
-        name:ctx.message.text
+        name: ctx.message.text
     };
     await add_category(data, ctx);
     await ctx.reply("✅ Muvofaqiyatli yaratildi");
-    return 
+    return
 }
 
 
@@ -304,26 +326,32 @@ const start_menu = new Menu("start_menu")
     })
     .row()
     .text("ℹ️ Biz haqimizda", async (ctx) => {
-        await ctx.answerCallbackQuery()
-        ctx.reply("Bu bo'lim tez orada ishga tushishi reja qilingan");
+        await ctx.answerCallbackQuery();
+        await ctx.deleteMessage();
+        ctx.reply(`⚜️⚜️ <b>Biz haqimizda</b>⚜️⚜️
+ \n<i>Kompaniya turli faoliyat turlaridagi korxonalarda buxgalteriya xizmatlarini ko'rsatish sohasida 10 yildan ortiq tajribaga ega.
+ Mutaxassislarimiz iqtisodiy ma'lumotga va moliyaviy hisob va korxona boshqaruvi sohasida xalqaro sertifikatlarga ega. Kompaniyaning majburiy talabi muntazam ravishda malaka oshirishdir.</i>       
+        `, {
+            parse_mode: "HTML"
+        });
 
     })
 pm.use(start_menu);
 
 
 const action_category_menu = new Menu("action_category_menu")
-   .text("Tahrirlash ✏️", async(ctx)=>{
-    await ctx.answerCallbackQuery();
-    await ctx.reply("Tez orada ishga tushiriladi bu funksiya")
-   })
-   .row()
-   .text("O'chirish 🗑", async (ctx)=>{
-    await ctx.answerCallbackQuery();
-    await ctx.deleteMessage();
-    let selected_category = await ctx.session.session_db.selected_category;
-    await remove_category(selected_category);
-    await ctx.reply("✅ O'chirildi");
-   })
+    .text("Tahrirlash ✏️", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.reply("Tez orada ishga tushiriladi bu funksiya")
+    })
+    .row()
+    .text("O'chirish 🗑", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.deleteMessage();
+        let selected_category = await ctx.session.session_db.selected_category;
+        await remove_category(selected_category);
+        await ctx.reply("✅ O'chirildi");
+    })
 pm.use(action_category_menu);
 
 
@@ -348,14 +376,14 @@ const admin_category_list = new Menu("admin_category_list")
                 })
                 .row();
         })
-    }).text("➕ Yangi qo'shish", async(ctx)=>{
+    }).text("➕ Yangi qo'shish", async (ctx) => {
         await ctx.answerCallbackQuery()
         await ctx.conversation.enter("creating_new_category");
     })
 pm.use(admin_category_list);
 
 
-pm.command("category_list", async (ctx)=>{
+pm.command("category_list", async (ctx) => {
 
     await ctx.reply("🔰 <b>Barcha categoriyalar turi</b>", {
         reply_markup: admin_category_list,
@@ -367,6 +395,7 @@ pm.command("category_list", async (ctx)=>{
 
 
 async function SendTask(msg_id, data, ctx) {
+
     let info_message = await ctx.api.sendMessage(msg_id,
         `
     <b>✅ Yangi zayavka</b>
@@ -382,6 +411,7 @@ async function SendTask(msg_id, data, ctx) {
     ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id), InputMediaBuilder.document(data.task_file)], {
         reply_to_message_id: info_message.message_id
     })
+
 }
 
 
@@ -394,9 +424,9 @@ async function SendTask(msg_id, data, ctx) {
 
 
 
-// bot.on("msg", async (ctx) => {
-//     console.log(ctx.msg.chat);
-// })
+bot.on("msg", async (ctx) => {
+    console.log(ctx.msg.chat);
+})
 
 
 
@@ -412,15 +442,17 @@ pm.command("start", async (ctx) => {
 
     let data = {
         user_id: ctx.from.id,
-        firstname:ctx.from.first_name,
-        username:ctx.from.username || null,
+        firstname: ctx.from.first_name,
+        username: ctx.from.username || null,
     }
-    
+
     await userRegister(data, ctx)
 
     await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
         reply_markup: back_main_menu
     });
+
+
     await ctx.conversation.enter("main_menyu_conversation");
     // await ctx.conversation.enter("payment_conversation");
 
