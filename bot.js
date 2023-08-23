@@ -1,6 +1,7 @@
 
 const { Bot, session, MemorySessionStorage, Keyboard, InlineKeyboard, InputFile, InputMediaDocument, InputMediaBuilder } = require("grammy");
 const { Menu, MenuRange } = require("@grammyjs/menu");
+const { StatelessQuestion } = require("@grammyjs/stateless-question");
 const {
     conversations,
     createConversation,
@@ -10,27 +11,30 @@ const Database = require("./db");
 
 const { userRegister, removeUser } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
-const {create_order, order_list} = require("./controllers/orderControllser");
+const { create_order, order_list, active_order } = require("./controllers/orderControllser");
+const customLogger = require("./config/customLogger");
 
 
 
 
 const bot_token = process.env.BOT_TOKEN;
 const DEV_ID = 5604998397;
-const AUTHOR_ID = null;
+const AUTHOR_ID_LIST = [5604998397];
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
 
 const bot = new Bot(bot_token);
 
-
+const unicornQuestion = new StatelessQuestion("user_id:", async (ctx) => {
+    console.log("User thinks unicorns are doing:", ctx.message.reply_to_message.entities);
+});
+bot.use(unicornQuestion.middleware());
 
 bot.use(async (ctx, next) => {
-
     ctx.config = {
         is_dev: ctx.from?.id == DEV_ID,
-        is_author: ctx.from?.id == AUTHOR_ID,
+        is_admin: AUTHOR_ID_LIST.includes(ctx.from?.id),
     }
 
     await next()
@@ -50,7 +54,7 @@ bot.use(session({
                     task_file: null,
                     comment: null,
                 },
-
+                selected_order:null,
             }
         },
         storage: new MemorySessionStorage()
@@ -154,12 +158,16 @@ async function task_data_conversation(conversation, ctx) {
         conversation.session.session_db.task.comment = null,
 
         // EDSP key files
-        await ctx.reply("🔑 EDSP kalitini yuklang");
+        await ctx.reply("<b>🔑 EDSP kalitini yuklang</b>", {
+            parse_mode: "HTML",
+        });
 
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP kalitini yuklang ");
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 EDSP kalitini yuklang</i> ", {
+                parse_mode: "HTML",
+            });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
@@ -168,11 +176,15 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.edsp_file_id = send_msg.document.file_id;
 
     // EDSP sertificate
-    await ctx.reply("📄 EDSP sertifikatnis  yuklang");
+    await ctx.reply("<b>📄 EDSP sertifikatni yuklang</b>", {
+        parse_mode: "HTML",
+    });
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP sertifikatni yuklang ");
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 EDSP sertifikatni yuklang </i> ", {
+                parse_mode: "HTML",
+            });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
@@ -181,11 +193,15 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
 
     // Password
-    await ctx.reply("🔐 Parolni kiriting");
+    await ctx.reply("<b>🔐 Parolni kiriting</b>", {
+        parse_mode: "HTML",
+    });
     ctx = await conversation.wait();
     if (!ctx.msg.text) {
         do {
-            await ctx.reply("⚠️ Noto'g'ri ma'lumot kiritildi,\n 🔐 Parolni kiriting ");
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔐 Parolni kiriting</i> ", {
+                parse_mode: "HTML",
+            });
             ctx = await conversation.wait();
         } while (!ctx.msg.text);
     }
@@ -193,11 +209,15 @@ async function task_data_conversation(conversation, ctx) {
 
 
     // Employee list file
-    await ctx.reply("📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)");
+    await ctx.reply("<b>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</b>", {
+        parse_mode: "HTML",
+    });
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ Noto'g'ri ma'lumot yuklandi,\n 🔑 EDSP sertifikatni yuklang ");
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</i> ", {
+                parse_mode: "HTML",
+            });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
@@ -208,42 +228,54 @@ async function task_data_conversation(conversation, ctx) {
     // Comment text
     await ctx.reply("💬 Izoh yozing");
     ctx = await conversation.wait();
-    conversation.session.session_db.task.comment = ctx.msg.text;
+    conversation.session.session_db.task.comment = ctx.msg?.text;
+    if (ctx.session.session_db.selected_service && ctx.session.session_db.task.edsp_file_id) {
+        let data = await ctx.session.session_db.task;
+        data.report_name = ctx.session.session_db.selected_service.name;
+        let order_data = {
+            service_category: ctx.session.session_db.selected_service._id,
+            edsp_key: data.edsp_file_id,
+            task_file: data.task_file,
+            edsp_cer: data.edsp_cer_file_id,
+            password: data.password,
+            comment: data.comment,
+            client_id: ctx.from.id,
+        }
+        let order = await create_order(order_data);
+        console.log(order);
+        data.order_number = order.order_number;
 
-    let data = await ctx.session.session_db.task;
-    data.report_name = ctx.session.session_db.selected_service.name;
-    let order_data = {
-        service_category:ctx.session.session_db.selected_service._id,
-        edsp_key:data.edsp_file_id,
-        task_file:data.task_file,
-        edsp_cer:data.edsp_cer_file_id,
-        password:data.password,
-        comment:data.comment,
-        client_id:ctx.from.id,
-    }
-    await create_order(order_data)
+        // Send message Admin and Channel
+        let sender_list = [Database_channel_id, DEV_ID]
+        for (let index in sender_list) {
+            await SendTask(sender_list[index], data, ctx);
+        }
 
-
-    // Send message Admin and Channel
-    let sender_list = [Database_channel_id, DEV_ID]
-    for (let index in sender_list) {
-        await SendTask(sender_list[index], data, ctx);
-    }
-
-    await ctx.reply("✅ Buyurtma qabul qilindi!");
-    await ctx.reply(`
+        await ctx.reply("✅ Buyurtma qabul qilindi!");
+        await ctx.reply(`
     ✅ <i>Xurmatli mijoz buyurtmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
     \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
     \n<b>💵To'lov summasi: 100.000 so'm</b>
         
         `, {
-        parse_mode: "HTML",
-    })
+            parse_mode: "HTML",
+        })
+        return
+    } else {
+        await ctx.reply("🛑 <b>Kutilmagan xatolik yuz berdi</b>\n\n <i>Itlimos qayta harakat qiling</i> ", {
+            parse_mode: "HTML",
+        });
+    }
 
 
 
 
-    return
+
+
+
+
+
+
 }
 
 async function payment_conversation(conversation, ctx) {
@@ -349,10 +381,35 @@ const action_category_menu = new Menu("action_category_menu")
         await ctx.answerCallbackQuery();
         await ctx.deleteMessage();
         let selected_category = await ctx.session.session_db.selected_category;
-        await remove_category(selected_category);
-        await ctx.reply("✅ O'chirildi");
+        if(selected_category){
+            await remove_category(selected_category);
+            await ctx.reply("✅ O'chirildi");
+        }else{
+            ctx.reply("Eskirgan xabar \n\n <i>Iltimos qayta harakat qiling!</i>")
+            await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+                parse_mode: "HTML",
+            });
+        }
+        
     })
 pm.use(action_category_menu);
+
+
+
+const admin_order_menu = new Menu("admin_order_menu")
+.dynamic(async (ctx, range) => {
+    let list = await active_order();
+    list.forEach((item) => {
+        range
+            .text(item.is_payment? "✅ ":"⛔️ " + (item.order_number || "0") + " | "+  new Date(item.created_at).toLocaleDateString("en-US") , async (ctx) => {
+                await ctx.answerCallbackQuery();
+                ctx.session.session_db.selected_order = item;
+            })
+            .row();
+    })
+})
+pm.use(admin_order_menu);
+
 
 
 const admin_category_list = new Menu("admin_category_list")
@@ -370,9 +427,6 @@ const admin_category_list = new Menu("admin_category_list")
                         parse_mode: "HTML",
                         reply_markup: action_category_menu,
                     })
-
-
-
                 })
                 .row();
         })
@@ -383,28 +437,21 @@ const admin_category_list = new Menu("admin_category_list")
 pm.use(admin_category_list);
 
 
-pm.command("category_list", async (ctx) => {
-
-    await ctx.reply("🔰 <b>Barcha categoriyalar turi</b>", {
-        reply_markup: admin_category_list,
-        parse_mode: "HTML"
-    })
-})
-
-
 
 
 async function SendTask(msg_id, data, ctx) {
 
     let info_message = await ctx.api.sendMessage(msg_id,
         `
-    <b>✅ Yangi zayavka</b>
- <b>📄 Hisobot turi: </b> ${data.report_name}
+    <b>✅ Yangi buyurtna</b>
+<b>🛅 Buyurtma raqami: </b> ${data.order_number}   
+<b>📄 Hisobot turi: </b> ${data.report_name}
 <b>👨‍💼Yuboruvchi: </b> <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>  
 <b>📆 Sana: </b> ${new Date().toLocaleString()}
 <b>🔐 Parol: </b> <i>${data.password}</i>
 <b>💬 Izoh: </b> <i>${data.comment}</i>
 <b>💵 To'lov summasi: </b> <i>Amalga oshirilmagan </i> ❌
+#Buyurtma
     `, {
         parse_mode: "HTML"
     });
@@ -414,19 +461,14 @@ async function SendTask(msg_id, data, ctx) {
 
 }
 
-
-
-
-
-
-
-
-
-
-
-bot.on("msg", async (ctx) => {
-    console.log(ctx.msg.chat);
-})
+pm.on("msg").filter(async (ctx) => {
+    let permission = ctx.config.is_dev || ctx.config.is_admin;
+    let is_reply_message = Boolean(ctx.message?.reply_to_message);
+    return (permission && is_reply_message)
+},
+    (ctx) => {
+        console.log(ctx.message.reply_to_message.entities);
+    })
 
 
 
@@ -437,6 +479,12 @@ const back_main_menu = new Keyboard()
     .text("🔙 Asosiy menu")
     .resized();
 
+const admin_main_menu =new Keyboard()
+.text("♻️ Buyurtmalar")
+.text("♻️ Xizmatlar")
+.row()
+.resized();
+
 
 pm.command("start", async (ctx) => {
 
@@ -446,18 +494,23 @@ pm.command("start", async (ctx) => {
         username: ctx.from.username || null,
     }
 
-    await userRegister(data, ctx)
-
-    await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
-        reply_markup: back_main_menu
-    });
-
-
-    await ctx.conversation.enter("main_menyu_conversation");
+    await userRegister(data, ctx);
+    let is_admin = await ctx.config.is_admin;
+    if(is_admin){
+        await ctx.reply(`👨‍💻 Salom Admin`, {
+            reply_markup: admin_main_menu
+        });
+    }else{
+        await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
+            reply_markup: back_main_menu
+        });
+        await ctx.conversation.enter("main_menyu_conversation");
+    }
     // await ctx.conversation.enter("payment_conversation");
 
 
 });
+
 
 pm.hears("🔙 Asosiy menu", async (ctx) => {
     await ctx.conversation.enter("main_menyu_conversation");
@@ -465,9 +518,18 @@ pm.hears("🔙 Asosiy menu", async (ctx) => {
 pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
     await ctx.conversation.enter("our_service_conversation");
 })
-
-
-
+pm.hears("♻️ Xizmatlar", async (ctx) => {
+    await ctx.reply("🔰 <b>Barcha xizmat turlari</b>", {
+        reply_markup: admin_category_list,
+        parse_mode: "HTML"
+    });
+})
+pm.hears("♻️ Buyurtmalar", async (ctx) => {
+    await ctx.reply("🔰 <b>Buyurtmalar ro'yhati</b>", {
+        reply_markup: admin_order_menu,
+        parse_mode: "HTML"
+    });
+})
 
 
 
@@ -475,7 +537,10 @@ bot.catch((err) => {
     const ctx = err.ctx;
     console.error(`Error while handling update ${ctx.update.update_id}:`);
     const e = err.error;
-    console.log(e);
+    customLogger.log({
+        level: 'error',
+        message: e
+    });
 });
 
 

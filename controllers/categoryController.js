@@ -20,11 +20,12 @@ const remove_category = async (data, ctx) => {
         let exist_category = await Category.findById(_id).exec();
         if (exist_category) {
             let _id = exist_category._id;
-            await Category.findOneAndRemove(_id);
+            await Category.findByIdAndUpdate(_id, {
+                active_category:false
+            });
         } else {
-            console.log("Category not found for deleteing --->")
+            console.log("Category not found for deleteing ---> " + _id);
         }
-
     } catch (error) {
         customLogger.log({
             level: 'error',
@@ -36,7 +37,7 @@ const remove_category = async (data, ctx) => {
 
 const category_list = async () => {
     try {
-        let category_list = await Category.find({});
+        let category_list = await Category.find({active_category:true});
         return category_list;
 
     } catch (error) {

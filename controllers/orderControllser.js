@@ -5,7 +5,8 @@ const create_order = async (data, ctx) => {
     try {
         let count = await Order.find().countDocuments();
         data.order_number = count + 1;
-        await Order.create(data);
+        let order = await Order.create(data);
+        return order
     } catch (error) {
         customLogger.log({
             level: 'error',
@@ -27,8 +28,20 @@ const order_list = async () => {
     }
 }
 
+const active_order = async () => {
+    try {
+        return await Order.find({is_finished:false, active_order:true})
+    } catch (error) {
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
 
 module.exports = {
     create_order,
     order_list,
+    active_order,
 }
