@@ -37,6 +37,10 @@ const orderSchema = mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    payment_price:{
+        type: Number,
+        default: 0,
+    },
     is_finished: {
         type: Boolean,
         default: false,

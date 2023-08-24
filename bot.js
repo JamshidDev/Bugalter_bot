@@ -11,7 +11,7 @@ const Database = require("./db");
 
 const { userRegister, removeUser } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
-const { create_order, order_list, active_order } = require("./controllers/orderControllser");
+const { create_order, order_list, active_order, get_order, pricing_order } = require("./controllers/orderControllser");
 const customLogger = require("./config/customLogger");
 
 
@@ -29,16 +29,9 @@ const bot = new Bot(bot_token);
 const unicornQuestion = new StatelessQuestion("user_id:", async (ctx) => {
     console.log("User thinks unicorns are doing:", ctx.message.reply_to_message.entities);
 });
-bot.use(unicornQuestion.middleware());
 
-bot.use(async (ctx, next) => {
-    ctx.config = {
-        is_dev: ctx.from?.id == DEV_ID,
-        is_admin: AUTHOR_ID_LIST.includes(ctx.from?.id),
-    }
 
-    await next()
-})
+
 
 bot.use(session({
     type: "multi",
@@ -54,13 +47,97 @@ bot.use(session({
                     task_file: null,
                     comment: null,
                 },
-                selected_order:null,
+                selected_order: null,
+                payment_order:null,
             }
         },
-        storage: new MemorySessionStorage()
+        storage: new MemorySessionStorage(),
+        // getSessionKey,
     },
     conversation: {},
 }));
+
+bot.command("payment", async (ctx) => {
+
+    console.log("Payment");
+    let chat_id = ctx.chat.id;
+    let title = "Xizmat uchun to'lov";
+    let description = "Bugalteriya xizmati uchun to'lov";
+    let payload = "1234567890";
+    let provider_token = "387026696:LIVE:64e7215708166ba0cd2ac693";
+    let currency = "UZS";
+    let prices = [{
+        label: "UZS",
+        amount: 1500000
+    }]
+    // [{ "code": "UZS", "title": "Uzbekistani Som", "symbol": "UZS", "native": "UZS", "thousands_sep": " ", "decimal_sep": ",", "symbol_left": false, "space_between": true, "exp": 2, "min_amount": "1208500", "max_amount": "12085000124" }]
+
+    let payment = await ctx.api.sendInvoice(
+        chat_id,
+        title,
+        description,
+        payload,
+        provider_token,
+        currency,
+        prices,
+    );
+
+    // console.log(payment);
+})
+
+
+bot.on(":successful_payment", async (ctx) => {
+    console.log("Success " + ctx);
+})
+
+
+bot.on("pre_checkout_query", async (ctx) => {
+    console.log(ctx.update.pre_checkout_query.id);
+    let pre_checkout_query_id = ctx.update.pre_checkout_query.id;
+    let order_id = ctx.update.pre_checkout_query.invoice_payload;
+
+    let data = await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, true, {
+        error_message: "No error"
+    });
+    console.log(data);
+})
+
+
+
+bot.use(unicornQuestion.middleware());
+
+bot.use(async (ctx, next) => {
+    ctx.config = {
+        is_dev: ctx.from?.id == DEV_ID,
+        is_admin: AUTHOR_ID_LIST.includes(ctx.from?.id),
+    }
+
+    await next()
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -83,6 +160,8 @@ bot.on("my_chat_member", async (ctx) => {
     }
 });
 
+
+
 bot.use(async (ctx, next) => {
     if (ctx.message?.text == "🔙 Asosiy menu" || ctx.message?.text == "♻️ Bizning xizmatlar") {
         const stats = await ctx.conversation.active();
@@ -94,12 +173,27 @@ bot.use(async (ctx, next) => {
 
 })
 
+const payment_btn_menu = new Menu("payment_btn_menu")
+    .text("To'lov qilish (Payme)", async (ctx) => {
+        await ctx.answerCallbackQuery();
+       let order = await ctx.session.session_db.payment_order;
+       console.log(order);
+       await ctx.reply("Tez orada");
+        
+    });
+
+bot.use(payment_btn_menu);
+
+
+
 
 bot.use(createConversation(our_service_conversation));
 bot.use(createConversation(main_menyu_conversation));
 bot.use(createConversation(task_data_conversation));
 bot.use(createConversation(payment_conversation));
 bot.use(createConversation(creating_new_category));
+bot.use(createConversation(pricing_order_conversation));
+
 
 const pm = bot.chatType("private")
 
@@ -381,35 +475,169 @@ const action_category_menu = new Menu("action_category_menu")
         await ctx.answerCallbackQuery();
         await ctx.deleteMessage();
         let selected_category = await ctx.session.session_db.selected_category;
-        if(selected_category){
+        if (selected_category) {
             await remove_category(selected_category);
             await ctx.reply("✅ O'chirildi");
-        }else{
+        } else {
             ctx.reply("Eskirgan xabar \n\n <i>Iltimos qayta harakat qiling!</i>")
             await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
                 parse_mode: "HTML",
             });
         }
-        
+
     })
 pm.use(action_category_menu);
 
 
 
-const admin_order_menu = new Menu("admin_order_menu")
-.dynamic(async (ctx, range) => {
-    let list = await active_order();
-    list.forEach((item) => {
-        range
-            .text(item.is_payment? "✅ ":"⛔️ " + (item.order_number || "0") + " | "+  new Date(item.created_at).toLocaleDateString("en-US") , async (ctx) => {
-                await ctx.answerCallbackQuery();
-                ctx.session.session_db.selected_order = item;
-            })
-            .row();
-    })
-})
-pm.use(admin_order_menu);
 
+
+
+
+
+async function SendTask(msg_id, data, ctx) {
+
+    let info_message = await ctx.api.sendMessage(msg_id,
+        `
+    <b>✅ Yangi buyurtna</b>
+<b>🛅 Buyurtma raqami: </b> ${data.order_number}   
+<b>📄 Hisobot turi: </b> ${data.report_name}
+<b>👨‍💼Yuboruvchi: </b> <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>  
+<b>📆 Sana: </b> ${new Date().toLocaleString()}
+<b>🔐 Parol: </b> <i>${data.password}</i>
+<b>💬 Izoh: </b> <i>${data.comment}</i>
+<b>💵 To'lov summasi: </b> <i>Amalga oshirilmagan </i> ❌
+#Buyurtma
+    `, {
+        parse_mode: "HTML"
+    });
+    ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id), InputMediaBuilder.document(data.task_file)], {
+        reply_to_message_id: info_message.message_id
+    })
+
+}
+
+// pm.on("msg").filter(async (ctx) => {
+//     let permission = ctx.config.is_dev || ctx.config.is_admin;
+//     let is_reply_message = Boolean(ctx.message?.reply_to_message);
+//     return (permission && is_reply_message)
+// },
+//     (ctx) => {
+//         console.log(ctx.message.reply_to_message.entities);
+//     })
+
+
+
+
+const back_main_menu = new Keyboard()
+    .text("♻️ Bizning xizmatlar")
+    .row()
+    .text("🔙 Asosiy menu")
+    .resized();
+
+const admin_main_menu = new Keyboard()
+    .text("♻️ Buyurtmalar")
+    .text("♻️ Xizmatlar")
+    .row()
+    .resized();
+
+
+
+
+
+
+
+
+
+
+
+
+pm.command("start", async (ctx) => {
+    console.log(ctx.chat.id);
+
+    let data = {
+        user_id: ctx.from.id,
+        firstname: ctx.from.first_name,
+        username: ctx.from.username || null,
+    }
+
+    await userRegister(data, ctx);
+    let is_admin = await ctx.config.is_admin;
+    if (is_admin) {
+        await ctx.reply(`👨‍💻 Salom Admin`, {
+            reply_markup: admin_main_menu
+        });
+    } else {
+        await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
+            reply_markup: back_main_menu
+        });
+        await ctx.conversation.enter("main_menyu_conversation");
+    }
+    // await ctx.conversation.enter("payment_conversation");
+
+
+});
+
+
+pm.hears("🔙 Asosiy menu", async (ctx) => {
+    await ctx.conversation.enter("main_menyu_conversation");
+})
+pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
+    await ctx.conversation.enter("our_service_conversation");
+})
+
+
+// Admin panel ------------------------------------------------------->
+
+ 
+async function pricing_order_conversation(conversation, ctx) {
+    await ctx.reply(`<b>Buyurtma uchun narx belgilang</b>
+
+♻️ Buyurtma raqami : <b>2</b>
+🔍 Minimal summa:  <b>15000</b>
+✍️ <i>Masalan:  <b>100000</b></i>`, {
+        parse_mode: "HTML"
+    })
+
+    ctx = await conversation.wait();
+
+    if (!(Number(ctx.message?.text) && +ctx.message?.text > 15000)) {
+        do {
+            await ctx.reply("Noto'g'ri ma'lumot kiritildi! \n\n <b>Masalan: </b> <i> 100000</i>", {
+                parse_mode: "HTML"
+            });
+            ctx = await conversation.wait();
+        } while (!(Number(ctx.message?.text) && +ctx.message?.text > 15000));
+    }
+    if (ctx.session.session_db.selected_order) {
+        
+        let price = ctx.message.text;
+        let data = {
+            _id: ctx.session.session_db.selected_order._id,
+            price: price,
+        }
+        let order = await pricing_order(data);
+         conversation.session.session_db.payment_order = order;
+        console.log(order);
+        ctx.api.sendMessage(order.client_id, `<b>Sizning buyurtmangiz qabul qilindi</b>
+♻️ Buyurtma raqami : <b>${order.order_number}</b>
+💵 To'lov summasi: <b>${order?.payment_price} so'm</b>
+📞 Bog'lanish: <b>+998(99) 501-60-04 so'm</b>
+
+<i>Buyurtma to'lov amalga oshirilgandan keyin 12 soat ichida bajarilib sizga bot orqali xabar yuboriladi!</i>`, {
+            parse_mode: "HTML",
+            reply_markup:payment_btn_menu,
+
+        })
+        await ctx.reply("✅ Narx belgilandi");
+    } else {
+        await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+            parse_mode: "HTML",
+
+        });
+    }
+
+}
 
 
 const admin_category_list = new Menu("admin_category_list")
@@ -438,98 +666,67 @@ pm.use(admin_category_list);
 
 
 
-
-async function SendTask(msg_id, data, ctx) {
-
-    let info_message = await ctx.api.sendMessage(msg_id,
-        `
-    <b>✅ Yangi buyurtna</b>
-<b>🛅 Buyurtma raqami: </b> ${data.order_number}   
-<b>📄 Hisobot turi: </b> ${data.report_name}
-<b>👨‍💼Yuboruvchi: </b> <a href="tg://user?id=${ctx.from.id}">${ctx.from.first_name}</a>  
-<b>📆 Sana: </b> ${new Date().toLocaleString()}
-<b>🔐 Parol: </b> <i>${data.password}</i>
-<b>💬 Izoh: </b> <i>${data.comment}</i>
-<b>💵 To'lov summasi: </b> <i>Amalga oshirilmagan </i> ❌
-#Buyurtma
-    `, {
-        parse_mode: "HTML"
-    });
-    ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id), InputMediaBuilder.document(data.task_file)], {
-        reply_to_message_id: info_message.message_id
-    })
-
-}
-
-pm.on("msg").filter(async (ctx) => {
-    let permission = ctx.config.is_dev || ctx.config.is_admin;
-    let is_reply_message = Boolean(ctx.message?.reply_to_message);
-    return (permission && is_reply_message)
-},
-    (ctx) => {
-        console.log(ctx.message.reply_to_message.entities);
-    })
-
-
-
-
-const back_main_menu = new Keyboard()
-    .text("♻️ Bizning xizmatlar")
-    .row()
-    .text("🔙 Asosiy menu")
-    .resized();
-
-const admin_main_menu =new Keyboard()
-.text("♻️ Buyurtmalar")
-.text("♻️ Xizmatlar")
-.row()
-.resized();
-
-
-pm.command("start", async (ctx) => {
-
-    let data = {
-        user_id: ctx.from.id,
-        firstname: ctx.from.first_name,
-        username: ctx.from.username || null,
-    }
-
-    await userRegister(data, ctx);
-    let is_admin = await ctx.config.is_admin;
-    if(is_admin){
-        await ctx.reply(`👨‍💻 Salom Admin`, {
-            reply_markup: admin_main_menu
-        });
-    }else{
-        await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
-            reply_markup: back_main_menu
-        });
-        await ctx.conversation.enter("main_menyu_conversation");
-    }
-    // await ctx.conversation.enter("payment_conversation");
-
-
-});
-
-
-pm.hears("🔙 Asosiy menu", async (ctx) => {
-    await ctx.conversation.enter("main_menyu_conversation");
-})
-pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
-    await ctx.conversation.enter("our_service_conversation");
-})
 pm.hears("♻️ Xizmatlar", async (ctx) => {
     await ctx.reply("🔰 <b>Barcha xizmat turlari</b>", {
         reply_markup: admin_category_list,
         parse_mode: "HTML"
     });
 })
+
+const order_deatils_menu = new Menu("order_deatils_menu")
+    .text("💵 Narx belgilash", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.conversation.enter("pricing_order_conversation");
+    })
+    .text("🧾 To'lov info", async (ctx) => {
+        console.log(ctx);
+    })
+    .row()
+    .text("✅ Bajarildi", async (ctx) => {
+        console.log(ctx);
+    })
+
+pm.use(order_deatils_menu);
+
+const admin_order_menu = new Menu("admin_order_menu")
+    .dynamic(async (ctx, range) => {
+        let list = await active_order();
+        list.forEach((item) => {
+            range
+                .text((item.is_payment ? "✅ " : "⛔️ ") + (item.order_number || "0") + " | " + new Date(item.created_at).toLocaleDateString("en-US"), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    let order = await get_order(item._id);
+                    ctx.session.session_db.selected_order = order;
+                    await ctx.reply(`
+♻️ Buyurtma raqami: <b>${order.order_number}</b>
+👨‍💻 Xizmat turi: <b>${order.service_category ? order.service_category.name : "O'chirilgan"}</b>
+👨‍💼 Yuboruvchi: <a href="tg://user?id=${order.client_id}">Mijoz (${order.client_id})</a> 
+📆 Sana: <b>${new Date(order.created_at).toLocaleDateString("en-US")}</b>
+🔐 Parol: <b>${order.password}</b>
+💵 To'lov summasi: <b>${order?.payment_price} so'm</b>
+💵 To'lov: <i>${order.is_payment ? "Amalga oshirilgan ✅" : "Amalga oshirilmagan ❌"}</i>
+💬 Izoh: <i>${order.comment}</i>
+
+                    `,
+                        {
+                            parse_mode: "HTML",
+                            reply_markup: order_deatils_menu
+                        })
+                })
+                .row();
+        })
+    })
+pm.use(admin_order_menu);
+
+
 pm.hears("♻️ Buyurtmalar", async (ctx) => {
     await ctx.reply("🔰 <b>Buyurtmalar ro'yhati</b>", {
         reply_markup: admin_order_menu,
         parse_mode: "HTML"
     });
 })
+
+
 
 
 

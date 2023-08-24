@@ -27,10 +27,9 @@ const order_list = async () => {
         });
     }
 }
-
-const active_order = async () => {
-    try {
-        return await Order.find({is_finished:false, active_order:true})
+const get_order = async(_id)=>{
+    try{
+        return await Order.findById(_id).populate('service_category');
     } catch (error) {
         customLogger.log({
             level: 'error',
@@ -39,9 +38,39 @@ const active_order = async () => {
     }
 }
 
+const active_order = async () => {
+    try {
+        return await Order.find({is_finished:false, active_order:true});
+    } catch (error) {
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
+const pricing_order = async (data) =>{
+    try{
+        let _id = data._id;
+        let price = data.price
+       let payment = await Order.findByIdAndUpdate(_id, {
+            payment_price:price
+        });
+        return payment
+    }catch(error){
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+       
+    }
+}
+
 
 module.exports = {
     create_order,
     order_list,
     active_order,
+    get_order,
+    pricing_order,
 }
