@@ -11,7 +11,8 @@ const Database = require("./db");
 
 const { userRegister, removeUser } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
-const { create_order, order_list, active_order, get_order, pricing_order } = require("./controllers/orderControllser");
+const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order } = require("./controllers/orderControllser");
+const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const customLogger = require("./config/customLogger");
 
 
@@ -48,7 +49,7 @@ bot.use(session({
                     comment: null,
                 },
                 selected_order: null,
-                payment_order:null,
+                payment_order: null,
             }
         },
         storage: new MemorySessionStorage(),
@@ -57,49 +58,46 @@ bot.use(session({
     conversation: {},
 }));
 
-bot.command("payment", async (ctx) => {
 
-    console.log("Payment");
-    let chat_id = ctx.chat.id;
-    let title = "Xizmat uchun to'lov";
-    let description = "Bugalteriya xizmati uchun to'lov";
-    let payload = "1234567890";
-    let provider_token = "387026696:LIVE:64e7215708166ba0cd2ac693";
-    let currency = "UZS";
-    let prices = [{
-        label: "UZS",
-        amount: 1500000
-    }]
-    // [{ "code": "UZS", "title": "Uzbekistani Som", "symbol": "UZS", "native": "UZS", "thousands_sep": " ", "decimal_sep": ",", "symbol_left": false, "space_between": true, "exp": 2, "min_amount": "1208500", "max_amount": "12085000124" }]
-
-    let payment = await ctx.api.sendInvoice(
-        chat_id,
-        title,
-        description,
-        payload,
-        provider_token,
-        currency,
-        prices,
-    );
-
-    // console.log(payment);
-})
 
 
 bot.on(":successful_payment", async (ctx) => {
-    console.log("Success " + ctx);
+    await ctx.deleteMessage()
+    let order_id = ctx.msg.successful_payment.invoice_payload;
+    let order_price = ctx.msg.successful_payment.total_amount;
+    let order = await paymenting_order(order_id)
+    let data = {
+        client_id: ctx.from.id,
+        order_id: ctx.msg.successful_payment.invoice_payload,
+        payment_amount: ctx.msg.successful_payment.total_amount,
+        payment_details: ctx.msg.successful_payment
+    }
+    await add_payment_histry(data)
+    await ctx.reply(`<b>To'lov amalga oshirildi</b>
+🔰 Buyurtma raqami: <b>${order.order_number}</b>  
+💵 To'langan summa: <b>${order_price}</b> so'm `, {
+        parse_mode: "HTML"
+    })
+
+    await ctx.api.sendMessage(DEV_ID, `<b>To'lov amalga oshirildi</b>
+🔰 Buyurtma raqami: <b>${order.order_number}</b>  
+💵 To'langan summa: <b>${order_price}</b> so'm `, {
+        parse_mode: "HTML"
+    })
 })
 
 
 bot.on("pre_checkout_query", async (ctx) => {
-    console.log(ctx.update.pre_checkout_query.id);
     let pre_checkout_query_id = ctx.update.pre_checkout_query.id;
     let order_id = ctx.update.pre_checkout_query.invoice_payload;
-
-    let data = await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, true, {
-        error_message: "No error"
-    });
-    console.log(data);
+    let order = await check_payment_order(order_id);
+    if (order.length == 1) {
+        await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, true);
+    } else {
+        await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, false, {
+            error_message: "Buyurtmaga to'lov qilish cheklangan"
+        });
+    }
 })
 
 
@@ -163,7 +161,8 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-    if (ctx.message?.text == "🔙 Asosiy menu" || ctx.message?.text == "♻️ Bizning xizmatlar") {
+    let commands_list = ["🔙 Asosiy menu","♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar" ]
+    if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
             await ctx.conversation.exit(key);
@@ -175,11 +174,44 @@ bot.use(async (ctx, next) => {
 
 const payment_btn_menu = new Menu("payment_btn_menu")
     .text("To'lov qilish (Payme)", async (ctx) => {
-        await ctx.answerCallbackQuery();
-       let order = await ctx.session.session_db.payment_order;
-       console.log(order);
-       await ctx.reply("Tez orada");
-        
+        let msg_id = ctx.update.callback_query.message.message_id;
+        let order = await find_order_for_payment(msg_id);
+        if (order.length == 1) {
+            let order_id = order[0]._id;
+            let price = order[0].payment_price
+            console.log(order[0]);
+
+            let chat_id = ctx.chat.id;
+            let title = order[0].service_category?.name;
+            let description = order[0].order_number + " raqamli buyurtmangizni bajarish uchun to'lov qilishingiz lozim!";
+            let payload = order_id;
+            let provider_token = "387026696:LIVE:64e7215708166ba0cd2ac693";
+            let currency = "UZS";
+            let prices = [{
+                label: "UZS",
+                amount: price * 100
+            }]
+            // [{ "code": "UZS", "title": "Uzbekistani Som", "symbol": "UZS", "native": "UZS", "thousands_sep": " ", "decimal_sep": ",", "symbol_left": false, "space_between": true, "exp": 2, "min_amount": "1208500", "max_amount": "12085000124" }]
+
+            let payment = await ctx.api.sendInvoice(
+                chat_id,
+                title,
+                description,
+                payload,
+                provider_token,
+                currency,
+                prices,
+            );
+
+
+
+
+        } else {
+            ctx.reply(`⚠️ <i>Bu to'lov xabari eskirgan yoki to'lov miqdori o'zgargan!</i> \n\n Ma'lumot uchun: <b>+998(99) 501-60-04 </b>`, {
+                parse_mode: "HTML"
+            })
+        }
+
     });
 
 bot.use(payment_btn_menu);
@@ -336,24 +368,29 @@ async function task_data_conversation(conversation, ctx) {
             client_id: ctx.from.id,
         }
         let order = await create_order(order_data);
-        console.log(order);
         data.order_number = order.order_number;
 
         // Send message Admin and Channel
-        let sender_list = [Database_channel_id, DEV_ID]
+        let sender_list = [Database_channel_id]
         for (let index in sender_list) {
             await SendTask(sender_list[index], data, ctx);
         }
 
-        await ctx.reply("✅ Buyurtma qabul qilindi!");
         await ctx.reply(`
-    ✅ <i>Xurmatli mijoz buyurtmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
-    \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
-    \n<b>💵To'lov summasi: 100.000 so'm</b>
-        
+<i>✅  Buyurtmangiz adminlarga jo'natildi iltimos adminlar javobini kuting. Adminlar 60 daqiqa ichida javob qaytarishadi.</i>
+
+🔰 Buyurtma raqami: <b>${order.order_number}</b>
         `, {
-            parse_mode: "HTML",
-        })
+            parse_mode: "HTML"
+        });
+        //     await ctx.reply(`
+        // ✅ <i>Xurmatli mijoz buyurtmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
+        // \n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
+        // \n<b>💵To'lov summasi: 100.000 so'm</b>
+
+        //     `, {
+        //         parse_mode: "HTML",
+        //     })
         return
     } else {
         await ctx.reply("🛑 <b>Kutilmagan xatolik yuz berdi</b>\n\n <i>Itlimos qayta harakat qiling</i> ", {
@@ -589,11 +626,11 @@ pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
 
 // Admin panel ------------------------------------------------------->
 
- 
+
 async function pricing_order_conversation(conversation, ctx) {
     await ctx.reply(`<b>Buyurtma uchun narx belgilang</b>
 
-♻️ Buyurtma raqami : <b>2</b>
+♻️ Buyurtma raqami : <b>${ctx.session.session_db.selected_order?.order_number}</b>
 🔍 Minimal summa:  <b>15000</b>
 ✍️ <i>Masalan:  <b>100000</b></i>`, {
         parse_mode: "HTML"
@@ -601,34 +638,38 @@ async function pricing_order_conversation(conversation, ctx) {
 
     ctx = await conversation.wait();
 
-    if (!(Number(ctx.message?.text) && +ctx.message?.text > 15000)) {
+    if (!(Number(ctx.message?.text) && +ctx.message?.text > 14000)) {
         do {
             await ctx.reply("Noto'g'ri ma'lumot kiritildi! \n\n <b>Masalan: </b> <i> 100000</i>", {
                 parse_mode: "HTML"
             });
             ctx = await conversation.wait();
-        } while (!(Number(ctx.message?.text) && +ctx.message?.text > 15000));
+        } while (!(Number(ctx.message?.text) && +ctx.message?.text > 14000));
     }
     if (ctx.session.session_db.selected_order) {
-        
+
         let price = ctx.message.text;
         let data = {
             _id: ctx.session.session_db.selected_order._id,
             price: price,
         }
         let order = await pricing_order(data);
-         conversation.session.session_db.payment_order = order;
-        console.log(order);
-        ctx.api.sendMessage(order.client_id, `<b>Sizning buyurtmangiz qabul qilindi</b>
+        conversation.session.session_db.payment_order = order;
+        let payment_message = await ctx.api.sendMessage(order.client_id, `<b>Sizning buyurtmangiz qabul qilindi</b>
 ♻️ Buyurtma raqami : <b>${order.order_number}</b>
-💵 To'lov summasi: <b>${order?.payment_price} so'm</b>
-📞 Bog'lanish: <b>+998(99) 501-60-04 so'm</b>
+💵 To'lov summasi: <b>${price} so'm</b>
+📞 Bog'lanish: <b>+998(99) 501-60-04</b>
 
 <i>Buyurtma to'lov amalga oshirilgandan keyin 12 soat ichida bajarilib sizga bot orqali xabar yuboriladi!</i>`, {
             parse_mode: "HTML",
-            reply_markup:payment_btn_menu,
+            reply_markup: payment_btn_menu,
 
+        });
+        await ordering_message_id({
+            _id: ctx.session.session_db.selected_order._id,
+            payment_message_id: payment_message.message_id
         })
+
         await ctx.reply("✅ Narx belgilandi");
     } else {
         await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
@@ -676,14 +717,71 @@ pm.hears("♻️ Xizmatlar", async (ctx) => {
 const order_deatils_menu = new Menu("order_deatils_menu")
     .text("💵 Narx belgilash", async (ctx) => {
         await ctx.answerCallbackQuery();
-        await ctx.conversation.enter("pricing_order_conversation");
+        let selected_order = await ctx.session.session_db.selected_order;
+        if (selected_order) {
+            await ctx.conversation.enter("pricing_order_conversation");
+        } else {
+            await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+                parse_mode: "HTML",
+            });
+        }
+
     })
     .text("🧾 To'lov info", async (ctx) => {
-        console.log(ctx);
+        await ctx.answerCallbackQuery();
+        let selected_order = await ctx.session.session_db.selected_order;
+        if (selected_order) {
+            let payment_info = await payment_details(selected_order._id);
+
+            if (payment_info.length == 1) {
+                let msg = payment_info[0];
+
+                await ctx.reply(`
+<b>To'lov ma'lumotlari</b>
+Buyurtma raqami: <b>${msg?.order_id?.order_number}</b>
+To'lov summasi: <b>${msg?.payment_amount / 100}</b> so'm
+To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
+            `, {
+                    parse_mode: "HTML"
+                })
+
+
+
+            } else {
+                await ctx.reply("⚠️ Buyurtma uchun to'lov ma'lumotlari topilmadi!")
+            }
+
+        } else {
+            await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+                parse_mode: "HTML",
+            });
+        }
+
     })
     .row()
     .text("✅ Bajarildi", async (ctx) => {
-        console.log(ctx);
+        await ctx.answerCallbackQuery();
+        let selected_order = await ctx.session.session_db.selected_order;
+        if (selected_order) {
+            let status = await finish_order(selected_order._id);
+            if (status) {
+                await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli topshirildi ✅ </i>`, {
+                    parse_mode: "HTML"
+                });
+
+                await ctx.api.sendMessage(selected_order.client_id, `<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>`, {
+                    parse_mode: "HTML"
+                })
+            } else {
+                await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtmani yalunlay olmaysiz! </i> ⚠️`, {
+                    parse_mode: "HTML"
+                })
+            }
+        } else {
+            await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+                parse_mode: "HTML",
+            });
+        }
     })
 
 pm.use(order_deatils_menu);
@@ -693,7 +791,7 @@ const admin_order_menu = new Menu("admin_order_menu")
         let list = await active_order();
         list.forEach((item) => {
             range
-                .text((item.is_payment ? "✅ " : "⛔️ ") + (item.order_number || "0") + " | " + new Date(item.created_at).toLocaleDateString("en-US"), async (ctx) => {
+                .text((item.is_payment ? "✅ " : "⛔️ ") + (item.order_number || "0") + " | " + new Date(item.created_at).toLocaleDateString("uz-Cyrl-UZ") + (item.payment_price == 0 ? ' ♦️' : " 🔹"), async (ctx) => {
                     await ctx.answerCallbackQuery();
                     let order = await get_order(item._id);
                     ctx.session.session_db.selected_order = order;
@@ -725,6 +823,11 @@ pm.hears("♻️ Buyurtmalar", async (ctx) => {
         parse_mode: "HTML"
     });
 })
+
+
+
+
+
 
 
 

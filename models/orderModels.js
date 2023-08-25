@@ -41,6 +41,10 @@ const orderSchema = mongoose.Schema({
         type: Number,
         default: 0,
     },
+    payment_message_id:{
+        type: Number,
+        default: 0,
+    },
     is_finished: {
         type: Boolean,
         default: false,

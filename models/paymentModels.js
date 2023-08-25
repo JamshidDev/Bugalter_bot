@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const payment = mongoose.Schema({
+const paymentSchema = mongoose.Schema({
     client_id: {
         type: Number,
         required: true,
@@ -12,6 +12,10 @@ const payment = mongoose.Schema({
     payment_amount: {
         type: Number,
         required: true,
+    },
+    payment_details:{
+        type:Object,
+        required:true,
     }
 }, {
     timestamps: {
@@ -19,3 +23,6 @@ const payment = mongoose.Schema({
         updatedAt: 'updated_at' // and `updated_at` to store the last updated date
     }
 })
+
+const PaymetHistory = mongoose.model("PaymetHistory", paymentSchema);
+module.exports = {PaymetHistory}
