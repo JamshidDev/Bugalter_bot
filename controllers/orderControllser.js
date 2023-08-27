@@ -27,8 +27,8 @@ const order_list = async () => {
         });
     }
 }
-const get_order = async(_id)=>{
-    try{
+const get_order = async (_id) => {
+    try {
         return await Order.findById(_id).populate('service_category');
     } catch (error) {
         customLogger.log({
@@ -40,7 +40,7 @@ const get_order = async(_id)=>{
 
 const active_order = async () => {
     try {
-        return await Order.find({is_finished:false, active_order:true});
+        return await Order.find({ is_finished: false, active_order: true });
     } catch (error) {
         customLogger.log({
             level: 'error',
@@ -49,31 +49,31 @@ const active_order = async () => {
     }
 }
 
-const pricing_order = async (data) =>{
-    try{
+const pricing_order = async (data) => {
+    try {
         let _id = data._id;
         let price = data.price
-       let payment = await Order.findByIdAndUpdate(_id, {
-            payment_price:price
+        let payment = await Order.findByIdAndUpdate(_id, {
+            payment_price: price
         });
         return payment
-    }catch(error){
+    } catch (error) {
         customLogger.log({
             level: 'error',
             message: error
         });
-       
+
     }
 }
 
-const ordering_message_id = async (data)=>{
-    try{
+const ordering_message_id = async (data) => {
+    try {
         let _id = data._id;
-        let {payment_message_id} = data;
-         await Order.findByIdAndUpdate(_id, {
-            payment_message_id:payment_message_id
+        let { payment_message_id } = data;
+        await Order.findByIdAndUpdate(_id, {
+            payment_message_id: payment_message_id
         });
-    }catch(error){
+    } catch (error) {
         customLogger.log({
             level: 'error',
             message: error
@@ -81,28 +81,28 @@ const ordering_message_id = async (data)=>{
     }
 }
 
-const finish_order = async (order_id)=>{
-    try{
+const finish_order = async (order_id) => {
+    try {
         let exist_order = await Order.find({
-            is_finished:false,
-            _id:order_id
+            is_finished: false,
+            _id: order_id
 
         });
 
-        if(exist_order.length == 1){
-            if(exist_order[0].is_payment){
+        if (exist_order.length == 1) {
+            if (exist_order[0].is_payment) {
                 await Order.findByIdAndUpdate(order_id, {
-                    is_finished:true
+                    is_finished: true
                 });
                 return true
-            }else{
+            } else {
                 return false
             }
-           
-        }else{
+
+        } else {
             return false
         }
-    }catch(error){
+    } catch (error) {
         customLogger.log({
             level: 'error',
             message: error
@@ -110,10 +110,10 @@ const finish_order = async (order_id)=>{
     }
 }
 
-const find_order_for_payment = async (msg_id)=>{
-    try{
-        return await Order.find({payment_message_id:msg_id, is_finished:false, is_payment:false}).populate('service_category');
-    }catch(error){
+const find_order_for_payment = async (msg_id) => {
+    try {
+        return await Order.find({ payment_message_id: msg_id, is_finished: false, is_payment: false }).populate('service_category');
+    } catch (error) {
         customLogger.log({
             level: 'error',
             message: error
@@ -121,10 +121,10 @@ const find_order_for_payment = async (msg_id)=>{
     }
 }
 
-const check_payment_order = async (_id)=>{
-    try{
-        return await Order.find({_id, is_finished:false, is_payment:false,active_order:true})
-    }catch(error){
+const check_payment_order = async (_id) => {
+    try {
+        return await Order.find({ _id, is_finished: false, is_payment: false, active_order: true })
+    } catch (error) {
         customLogger.log({
             level: 'error',
             message: error
@@ -132,20 +132,50 @@ const check_payment_order = async (_id)=>{
     }
 }
 
-const paymenting_order = async (_id)=>{
-    try{
+const paymenting_order = async (_id) => {
+    try {
         let exist_order = await Order.findById(_id);
-        if(exist_order){
+        if (exist_order) {
             await Order.findByIdAndUpdate(_id, {
-                is_payment:true
+                is_payment: true
             });
 
             return exist_order
-        }else{
+        } else {
             return exist_order
         }
 
-    }catch(error){
+    } catch (error) {
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
+const reject_order_info = async (_id) => {
+    try {
+        return await Order.find({_id, is_payment:false, active_order:true,is_finished: false})
+    } catch (error) {
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
+const reject_order = async(_id)=>{
+    try{
+        let exist_order = await Order.find({_id, is_payment:false, active_order:true,is_finished: false});
+        if(exist_order.length ==1){
+            await Order.findByIdAndUpdate(_id, {
+                active_order: false
+            });
+            return exist_order
+        }else{
+            return []
+        }
+    }catch (error) {
         customLogger.log({
             level: 'error',
             message: error
@@ -166,5 +196,7 @@ module.exports = {
     finish_order,
     find_order_for_payment,
     check_payment_order,
-    paymenting_order
+    paymenting_order,
+    reject_order_info,
+    reject_order
 }

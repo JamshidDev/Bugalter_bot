@@ -11,7 +11,7 @@ const Database = require("./db");
 
 const { userRegister, removeUser } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
-const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order } = require("./controllers/orderControllser");
+const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("./controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const customLogger = require("./config/customLogger");
 
@@ -19,8 +19,8 @@ const customLogger = require("./config/customLogger");
 
 
 const bot_token = process.env.BOT_TOKEN;
-const DEV_ID = 5604998397;
-const AUTHOR_ID_LIST = [5604998397];
+const DEV_ID = 937912674;
+const AUTHOR_ID_LIST = [937912674];
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
@@ -65,6 +65,8 @@ bot.on(":successful_payment", async (ctx) => {
     await ctx.deleteMessage()
     let order_id = ctx.msg.successful_payment.invoice_payload;
     let order_price = ctx.msg.successful_payment.total_amount;
+
+
     let order = await paymenting_order(order_id)
     let data = {
         client_id: ctx.from.id,
@@ -161,7 +163,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-    let commands_list = ["🔙 Asosiy menu","♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar" ]
+    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar"]
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -225,6 +227,10 @@ bot.use(createConversation(task_data_conversation));
 bot.use(createConversation(payment_conversation));
 bot.use(createConversation(creating_new_category));
 bot.use(createConversation(pricing_order_conversation));
+bot.use(createConversation(reject_order_conversation));
+
+
+
 
 
 const pm = bot.chatType("private")
@@ -680,6 +686,42 @@ async function pricing_order_conversation(conversation, ctx) {
 
 }
 
+async function reject_order_conversation(conversation, ctx) {
+    await ctx.reply("<b>🛑 Buyurtmani rad etish</b> \n\n <i>Buyurtmani rad etish sababini yozing bu izoh mijorga yuboriladi!</i> ", {
+        parse_mode: "HTML"
+    });
+    ctx = await conversation.wait();
+    if (!ctx.message?.text) {
+        do {
+            await ctx.reply("⚠️ Noto'g'ri ma'lumot kiritildi! \n\n<i> Buyurtmani rad etish sababini yozing bu izoh mijorga yuboriladi!</i>", {
+                parse_mode: "HTML"
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.message?.text);
+    }
+    comment = ctx.message.text;
+    let selected_order = await ctx.session.session_db.selected_order;
+    if (selected_order) {
+        let rejected_order = await reject_order(selected_order._id);
+        if (rejected_order.length == 1) {
+            let order = rejected_order[0];
+            await ctx.api.sendMessage(order.client_id, `<b> 🛑 Sizning ${order.order_number} raqamli buyurtmangiz adminlar tomonidan raq etildi!</b> \n\n<b>💬 Sabab: </b> <i>${comment}</i> \n Bog'lanish uchun: <b>+998(99) 501-60-04</b> `, { parse_mode: "HTML" })
+            await ctx.reply(`✅ ${order.order_number} raqamli buyurtma raq etildi!`);
+
+        } else {
+            await ctx.reply(`<i>Buyurtmani raq etish cheklangan! </i> ⚠️`, {
+                parse_mode: "HTML"
+            })
+        }
+    } else {
+        await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+            parse_mode: "HTML",
+        });
+    }
+
+
+}
+
 
 const admin_category_list = new Menu("admin_category_list")
     .dynamic(async (ctx, range) => {
@@ -715,11 +757,18 @@ pm.hears("♻️ Xizmatlar", async (ctx) => {
 })
 
 const order_deatils_menu = new Menu("order_deatils_menu")
-    .text("💵 Narx belgilash", async (ctx) => {
+    .text("🛑 Rad etish", async (ctx) => {
         await ctx.answerCallbackQuery();
         let selected_order = await ctx.session.session_db.selected_order;
         if (selected_order) {
-            await ctx.conversation.enter("pricing_order_conversation");
+            let order = await reject_order_info(selected_order._id);
+            if (order.length == 1) {
+                await ctx.conversation.enter("reject_order_conversation");
+            } else {
+                await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtmani rad etishni mumkin emas! </i> ⚠️`, {
+                    parse_mode: "HTML"
+                })
+            }
         } else {
             await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
                 parse_mode: "HTML",
@@ -757,6 +806,18 @@ To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
             });
         }
 
+    }).row()
+    .text("💵 Narx belgilash", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        let selected_order = await ctx.session.session_db.selected_order;
+        if (selected_order) {
+            await ctx.conversation.enter("pricing_order_conversation");
+        } else {
+            await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+                parse_mode: "HTML",
+            });
+        }
+
     })
     .row()
     .text("✅ Bajarildi", async (ctx) => {
@@ -769,7 +830,7 @@ To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
                     parse_mode: "HTML"
                 });
 
-                await ctx.api.sendMessage(selected_order.client_id, `<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>`, {
+                await ctx.api.sendMessage(selected_order.client_id, `<b>🏁 Buyurtma bajarildi</b> \n\n<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>`, {
                     parse_mode: "HTML"
                 })
             } else {
