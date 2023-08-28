@@ -2,6 +2,7 @@
 const { Bot, session, MemorySessionStorage, Keyboard, InlineKeyboard, InputFile, InputMediaDocument, InputMediaBuilder } = require("grammy");
 const { Menu, MenuRange } = require("@grammyjs/menu");
 const { StatelessQuestion } = require("@grammyjs/stateless-question");
+const { I18n } = require("@grammyjs/i18n");
 const {
     conversations,
     createConversation,
@@ -56,7 +57,33 @@ bot.use(session({
         // getSessionKey,
     },
     conversation: {},
+    __language_code: {},
 }));
+
+const i18n = new I18n({
+    defaultLocale: "uz",
+    useSession: true,
+    directory: "locales",
+    globalTranslationContext(ctx) {
+        return { first_name: ctx.from?.first_name ?? "" };
+    },
+});
+
+bot.use(i18n);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -162,7 +189,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar"]
+    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔙 Главное меню", "♻️ Наши услуги"]
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -185,7 +212,7 @@ const payment_btn_menu = new Menu("payment_btn_menu")
             let title = order[0].service_category?.name;
             let description = order[0].order_number + " raqamli buyurtmangizni bajarish uchun to'lov qilishingiz lozim!";
             let payload = order_id;
-            let provider_token = payme_tokent ;
+            let provider_token = payme_tokent;
             let currency = "UZS";
             let prices = [{
                 label: "UZS",
@@ -237,8 +264,7 @@ const pm = bot.chatType("private")
 
 
 async function our_service_conversation(conversation, ctx) {
-    ctx.reply(`Siz qaysi <b>Soliq yoki moliyaviy hisobotini</b> yuborishimizni hohlaysiz? 
-     \n\n<i>Quyidagilarni Tanlang! 👇</i>`, {
+    ctx.reply(ctx.t("service_title"), {
         reply_markup: our_service_menu,
         parse_mode: "HTML",
     })
@@ -250,28 +276,7 @@ async function main_menyu_conversation(conversation, ctx) {
     let client_id = ctx.from.id;
     let photo_url = new InputFile("./resource/picture/start_picture.png");
     ctx.api.sendPhoto(client_id, photo_url, {
-        caption: ` ⚡️<b>Asosiy menu</b>⚡️ \n\n 
-❓ Sizda buxgalteriya bilan bog'liq muammolar bormi?
-❓ Soliq tekshiruvlaridan charchadingizmi?
-❓ Xato va kamchiliklar ko'payib ketdimi?
-
-❗️ Endi bu muammo emas !!!
-☝️ Biz sizga o'zimizning sifatli va hamyonbob xizmatlarimizni taklif qilamiz.
-
-👉 Bizning xizmatlarimiz:
-1️⃣ Barcha turdagi korxonalar MCHJ, Oilaviy korxona, Xususiy korxona, YATT ochish, ustav va tasis shartnomalari tuzish va ularni davlat ro'yxatidan o'tkazish.
-
-2️⃣ Chakana va ulgurji savdo, ishlab chiqarish, xizmat ko'rsatish korxonalariga sifatli, tezkor va ishonchli buxgalteriya xizmatlarini ko'rsatish.
-
-3️⃣ Barcha turdagi soliqlarni hisoblash va hisobotlarni topshirish, Soliq maslaxatlari:
-✅ Foyda solig'i
-✅ Qo'shilgan qiymat solig'i (QQS)
-✅ Aylanmadan soliq
-✅ Yer qaridan foydalanganlik uchun soliq
-✅ Jismoniy shaxslardan olinadigan daromad solig'i
-✅ Dividend solig'i
-✅ Mol-mulk va yer solig'i
-        `,
+        caption: ctx.t("start_addition"),
         parse_mode: "HTML",
         reply_markup: start_menu
     })
@@ -287,21 +292,21 @@ async function task_data_conversation(conversation, ctx) {
         conversation.session.session_db.task.comment = null,
 
         // EDSP key files
-        await ctx.reply("<i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i>", {
+        await ctx.reply(ctx.t("task_key_title"), {
             parse_mode: "HTML",
         });
 
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i> ", {
+            await ctx.reply(ctx.t("task_key_title_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
     let file_id_1 = ctx.msg.document.file_id
-    
+
     let send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_1);
     conversation.session.session_db.task.edsp_file_id = send_msg.document.file_id;
     // EDSP sertificate
@@ -311,25 +316,25 @@ async function task_data_conversation(conversation, ctx) {
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 EDSP sertifikatni yuklang </i> ", {
+            await ctx.reply(ctx.t("task_cer_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
     let file_id_2 = ctx.msg.document.file_id
-    
+
     send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_2);
     conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
 
     // Password
-    await ctx.reply("<b>🔐 Parolni kiriting</b>", {
+    await ctx.reply(ctx.t("password_title"), {
         parse_mode: "HTML",
     });
     ctx = await conversation.wait();
     if (!ctx.msg.text) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔐 Parolni kiriting</i> ", {
+            await ctx.reply(ctx.t("password_title_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
@@ -356,7 +361,7 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.task_file = "no file_id";
 
     // Comment text
-    await ctx.reply("💬 Izoh yozing");
+    await ctx.reply(ctx.t("comment_title"));
     ctx = await conversation.wait();
     conversation.session.session_db.task.comment = ctx.msg?.text;
     if (ctx.session.session_db.selected_service && ctx.session.session_db.task.edsp_file_id) {
@@ -380,11 +385,9 @@ async function task_data_conversation(conversation, ctx) {
             await SendTask(sender_list[index], data, ctx);
         }
 
-        await ctx.reply(`
-<i>✅  Buyurtmangiz adminlarga jo'natildi iltimos adminlar javobini kuting. Adminlar 60 daqiqa ichida javob qaytarishadi.</i>
-
-🔰 Buyurtma raqami: <b>${order.order_number}</b>
-        `, {
+        await ctx.reply(ctx.t("order_create", {
+            order_number: order.order_number
+        }), {
             parse_mode: "HTML"
         });
         //     await ctx.reply(`
@@ -397,7 +400,7 @@ async function task_data_conversation(conversation, ctx) {
         //     })
         return
     } else {
-        await ctx.reply("🛑 <b>Kutilmagan xatolik yuz berdi</b>\n\n <i>Itlimos qayta harakat qiling</i> ", {
+        await ctx.reply(ctx.t("expire_msg"), {
             parse_mode: "HTML",
         });
     }
@@ -440,13 +443,21 @@ async function creating_new_category(conversation, ctx) {
 
 
 
-bot.command("upload", async(ctx)=>{
+bot.command("upload", async (ctx) => {
     await ctx.conversation.enter("upload_file_conversation");
 })
 const continue_menu = new Menu("continue_menu")
-    .text("♻️ Boshlash", async (ctx) => {
-        await ctx.conversation.enter("task_data_conversation");
-    });
+    .dynamic(async (ctx, range) => {
+        let list = ['start_go_title']
+        list.forEach((item) => {
+            range
+                .text("♻️ " + ctx.t(item), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.conversation.enter("task_data_conversation");
+                })
+                .row();
+        })
+    })
 pm.use(continue_menu)
 
 
@@ -458,10 +469,9 @@ const our_service_menu = new Menu("our_service_menu")
                 .text("🔰 " + item.name, async (ctx) => {
                     ctx.session.session_db.selected_service = item;
                     ctx.deleteMessage();
-                    ctx.reply(` 
-                    Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
-                    \n<i>Hisobot yuborish uchun <b>zarur fayl va ma'lumotlarni</b> taqdim etishingiz lozim</i>
-                    `, {
+                    ctx.reply(ctx.t("selected_service", {
+                        service_name: item.name
+                    }), {
                         parse_mode: "HTML",
                         reply_markup: continue_menu,
                     })
@@ -477,23 +487,35 @@ pm.use(our_service_menu);
 
 
 const start_menu = new Menu("start_menu")
-    .text("♻️ Bizning xizmatlar", async (ctx) => {
-        await ctx.answerCallbackQuery();
-        await ctx.deleteMessage();
-        await ctx.conversation.enter("our_service_conversation");
-    })
-    .row()
-    .text("ℹ️ Biz haqimizda", async (ctx) => {
-        await ctx.answerCallbackQuery();
-        await ctx.deleteMessage();
-        ctx.reply(`⚜️⚜️ <b>Biz haqimizda</b>⚜️⚜️
- \n<i>Kompaniya turli faoliyat turlaridagi korxonalarda buxgalteriya xizmatlarini ko'rsatish sohasida 10 yildan ortiq tajribaga ega.
- Mutaxassislarimiz iqtisodiy ma'lumotga va moliyaviy hisob va korxona boshqaruvi sohasida xalqaro sertifikatlarga ega. Kompaniyaning majburiy talabi muntazam ravishda malaka oshirishdir.</i>       
-        `, {
-            parse_mode: "HTML"
-        });
+    .dynamic(async (ctx, range) => {
+        let list = ['our_service_btn_title', 'about_us_btn_title'];
+        list.forEach((item) => {
+            range
+                .text( ctx.t(item), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.deleteMessage();
+                    if (item == 'our_service_btn_title') {
+                        await ctx.conversation.enter("our_service_conversation");
+                    } else {
 
+
+                        let client_id = ctx.from.id;
+                        let photo_url = new InputFile("./resource/picture/document.jpg");
+                        ctx.api.sendPhoto(client_id, photo_url, {
+                            caption: ctx.t("about_us_text"),
+                            parse_mode: "HTML",
+                            
+                        })
+
+                        // ctx.reply(ctx.t("about_us_text"), {
+                        //     parse_mode: "HTML"
+                        // });
+                    }
+                })
+                .row();
+        })
     })
+
 pm.use(start_menu);
 
 
@@ -562,11 +584,7 @@ async function SendTask(msg_id, data, ctx) {
 
 
 
-const back_main_menu = new Keyboard()
-    .text("♻️ Bizning xizmatlar")
-    .row()
-    .text("🔙 Asosiy menu")
-    .resized();
+
 
 const admin_main_menu = new Keyboard()
     .text("♻️ Buyurtmalar")
@@ -579,27 +597,74 @@ const admin_main_menu = new Keyboard()
 
 
 
+const change_language_menu = new Menu("change_language_menu")
+    .dynamic(async (ctx, range) => {
+        let list = [{
+            name: "language_uz",
+            key: "uz"
+        },
+        {
+            name: "language_ru",
+            key: "ru"
+        }];
+        list.forEach((item) => {
+            range
+                .text((item.key == 'uz'?"🇺🇿 " : "🇷🇺 ") + ctx.t(item.name), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.i18n.setLocale(item.key);
+                    let language = await ctx.i18n.getLocale();
+                    const back_main_menu = new Keyboard()
+                    .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+                    .row()
+                    .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
+                    .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
+                    .resized();
+                    await ctx.reply(language == 'uz'? "✅ Dastur tili Uzbek tiliga o'zgardi!" : "✅ Язык программы изменился на русский!", 
+                    {
+                        reply_markup:back_main_menu
+                    }
+                    
+                    )
+                   
+                })
+                .row();
+        })
+    })
 
+pm.use(change_language_menu);
 
 
 
 
 
 pm.command("start", async (ctx) => {
+    let language = await ctx.i18n.getLocale();
+    if(!i18n.locales.includes(language)){
+        await ctx.i18n.setLocale("uz");
+    }
+    language = await ctx.i18n.getLocale();
+    
     let data = {
         user_id: ctx.from.id,
+        
         firstname: ctx.from.first_name,
         username: ctx.from.username || null,
     }
-
+    console.log(await ctx.i18n.getLocale());
     await userRegister(data, ctx);
     let is_admin = await ctx.config.is_admin;
     if (is_admin) {
-        await ctx.reply(`👨‍💻 Salom Admin`, {
+        await ctx.reply(ctx.t("start_hi"), {
             reply_markup: admin_main_menu
         });
     } else {
-        await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
+        const back_main_menu = new Keyboard()
+            .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+            .row()
+            .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
+            .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
+            .resized();
+        await ctx.reply(ctx.t("start_hi"), {
             reply_markup: back_main_menu
         });
         await ctx.conversation.enter("main_menyu_conversation");
@@ -610,8 +675,27 @@ pm.command("start", async (ctx) => {
 pm.hears("🔙 Asosiy menu", async (ctx) => {
     await ctx.conversation.enter("main_menyu_conversation");
 })
+pm.hears("🔙 Главное меню", async (ctx) => {
+    await ctx.conversation.enter("main_menyu_conversation");
+})
+pm.hears("♻️ Наши услуги", async (ctx) => {
+    await ctx.conversation.enter("our_service_conversation");
+})
 pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
     await ctx.conversation.enter("our_service_conversation");
+})
+pm.hears("⚙️ Tilni o'zgartirish", async (ctx) => {
+    ctx.reply(ctx.t("change_language_title"), {
+        parse_mode: "HTML",
+        reply_markup:change_language_menu
+    })
+
+})
+pm.hears("⚙️ Изменить язык", async (ctx) => {
+    ctx.reply(ctx.t("change_language_title"), {
+        parse_mode: "HTML",
+        reply_markup:change_language_menu
+    })
 })
 
 
@@ -646,12 +730,10 @@ async function pricing_order_conversation(conversation, ctx) {
         }
         let order = await pricing_order(data);
         conversation.session.session_db.payment_order = order;
-        let payment_message = await ctx.api.sendMessage(order.client_id, `<b>Sizning buyurtmangiz qabul qilindi</b>
-♻️ Buyurtma raqami : <b>${order.order_number}</b>
-💵 To'lov summasi: <b>${price} so'm</b>
-📞 Bog'lanish: <b>+998(99) 501-60-04</b>
-
-<i>Buyurtma to'lov amalga oshirilgandan keyin 12 soat ichida bajarilib sizga bot orqali xabar yuboriladi!</i>`, {
+        let payment_message = await ctx.api.sendMessage(order.client_id, ctx.t("pricing_order_text", {
+            order_number: order.order_number,
+            price: price
+        }), {
             parse_mode: "HTML",
             reply_markup: payment_btn_menu,
 
@@ -663,7 +745,7 @@ async function pricing_order_conversation(conversation, ctx) {
 
         await ctx.reply("✅ Narx belgilandi");
     } else {
-        await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+        await ctx.reply(ctx.t("expire_msg"), {
             parse_mode: "HTML",
 
         });
