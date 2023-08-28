@@ -14,22 +14,22 @@ const { category_list, add_category, remove_category } = require("./controllers/
 const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("./controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const customLogger = require("./config/customLogger");
+const { log } = require("winston");
 
 
 
 
 const bot_token = process.env.BOT_TOKEN;
-const DEV_ID = 937912674;
-const AUTHOR_ID_LIST = [937912674];
+const payme_tokent = process.env.PROVIDER_TOKEN;
+const DEV_ID = 5604998397;
+const AUTHOR_ID_LIST = [5604998397];
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
 
 const bot = new Bot(bot_token);
 
-const unicornQuestion = new StatelessQuestion("user_id:", async (ctx) => {
-    console.log("User thinks unicorns are doing:", ctx.message.reply_to_message.entities);
-});
+
 
 
 
@@ -104,7 +104,6 @@ bot.on("pre_checkout_query", async (ctx) => {
 
 
 
-bot.use(unicornQuestion.middleware());
 
 bot.use(async (ctx, next) => {
     ctx.config = {
@@ -181,13 +180,12 @@ const payment_btn_menu = new Menu("payment_btn_menu")
         if (order.length == 1) {
             let order_id = order[0]._id;
             let price = order[0].payment_price
-            console.log(order[0]);
 
             let chat_id = ctx.chat.id;
             let title = order[0].service_category?.name;
             let description = order[0].order_number + " raqamli buyurtmangizni bajarish uchun to'lov qilishingiz lozim!";
             let payload = order_id;
-            let provider_token = "387026696:LIVE:64e7215708166ba0cd2ac693";
+            let provider_token = payme_tokent ;
             let currency = "UZS";
             let prices = [{
                 label: "UZS",
@@ -224,7 +222,6 @@ bot.use(payment_btn_menu);
 bot.use(createConversation(our_service_conversation));
 bot.use(createConversation(main_menyu_conversation));
 bot.use(createConversation(task_data_conversation));
-bot.use(createConversation(payment_conversation));
 bot.use(createConversation(creating_new_category));
 bot.use(createConversation(pricing_order_conversation));
 bot.use(createConversation(reject_order_conversation));
@@ -240,8 +237,8 @@ const pm = bot.chatType("private")
 
 
 async function our_service_conversation(conversation, ctx) {
-    ctx.reply(`<b>👨‍💻 Biz "Bugalters Group" jamoasi sizga tezkor va sifatli bugalteriya xizmatlarini taklif etadi. </b>
-     \n\n<i>Bizning xizmatlar 👇</i>`, {
+    ctx.reply(`Siz qaysi <b>Soliq yoki moliyaviy hisobotini</b> yuborishimizni hohlaysiz? 
+     \n\n<i>Quyidagilarni Tanlang! 👇</i>`, {
         reply_markup: our_service_menu,
         parse_mode: "HTML",
     })
@@ -290,27 +287,27 @@ async function task_data_conversation(conversation, ctx) {
         conversation.session.session_db.task.comment = null,
 
         // EDSP key files
-        await ctx.reply("<b>🔑 EDSP kalitini yuklang</b>", {
+        await ctx.reply("<i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i>", {
             parse_mode: "HTML",
         });
 
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 EDSP kalitini yuklang</i> ", {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i> ", {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
-    let file_id = ctx.msg.document.file_id
-    let send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    let file_id_1 = ctx.msg.document.file_id
+    
+    let send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_1);
     conversation.session.session_db.task.edsp_file_id = send_msg.document.file_id;
-
     // EDSP sertificate
-    await ctx.reply("<b>📄 EDSP sertifikatni yuklang</b>", {
-        parse_mode: "HTML",
-    });
+    // await ctx.reply("<b>📄 EDSP sertifikatni yuklang</b>", {
+    //     parse_mode: "HTML",
+    // });
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
@@ -320,8 +317,9 @@ async function task_data_conversation(conversation, ctx) {
             ctx = await conversation.wait();
         } while (!ctx.msg.document);
     }
-    file_id = ctx.msg.document.file_id
-    send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    let file_id_2 = ctx.msg.document.file_id
+    
+    send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_2);
     conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
 
     // Password
@@ -341,21 +339,21 @@ async function task_data_conversation(conversation, ctx) {
 
 
     // Employee list file
-    await ctx.reply("<b>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</b>", {
-        parse_mode: "HTML",
-    });
-    ctx = await conversation.wait();
-    if (!ctx.msg.document) {
-        do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</i> ", {
-                parse_mode: "HTML",
-            });
-            ctx = await conversation.wait();
-        } while (!ctx.msg.document);
-    }
-    file_id = ctx.msg.document.file_id
-    send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
-    conversation.session.session_db.task.task_file = send_msg.document.file_id;
+    // await ctx.reply("<b>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</b>", {
+    //     parse_mode: "HTML",
+    // });
+    // ctx = await conversation.wait();
+    // if (!ctx.msg.document) {
+    //     do {
+    //         await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>📁 Ishchilar ro'yhatini yuklang (Word yoki excel fayl)</i> ", {
+    //             parse_mode: "HTML",
+    //         });
+    //         ctx = await conversation.wait();
+    //     } while (!ctx.msg.document);
+    // }
+    // file_id = ctx.msg.document.file_id
+    // send_msg = await ctx.api.sendDocument(Database_channel_id, file_id);
+    conversation.session.session_db.task.task_file = "no file_id";
 
     // Comment text
     await ctx.reply("💬 Izoh yozing");
@@ -415,19 +413,6 @@ async function task_data_conversation(conversation, ctx) {
 
 }
 
-async function payment_conversation(conversation, ctx) {
-    await ctx.reply(`
-✅ <i>Xurmatli mijoz buyutmani tasdiqlash uchun to'lovni amalga oshirishingiz zarur!</i>
-\n✅ <i>To'lov amalgandan keyin xizmat 24 soat ichida bajarilib bot orqali sizga xabar yuborladi.</i>
-\n✅ <i>To'lov </i>
-\n<b>💵To'lov summasi: 100.000 so'm</b>
-    `, {
-        parse_mode: "HTML",
-    })
-
-    return
-
-}
 
 async function creating_new_category(conversation, ctx) {
     await ctx.reply("🔰 Yangi xizmat turini nomini kiriting! \n\n ✍️ <b>Masalan: </b> <i> Mol-mulk va yer solig'i</i>", {
@@ -454,6 +439,10 @@ async function creating_new_category(conversation, ctx) {
 }
 
 
+
+bot.command("upload", async(ctx)=>{
+    await ctx.conversation.enter("upload_file_conversation");
+})
 const continue_menu = new Menu("continue_menu")
     .text("♻️ Boshlash", async (ctx) => {
         await ctx.conversation.enter("task_data_conversation");
@@ -471,7 +460,7 @@ const our_service_menu = new Menu("our_service_menu")
                     ctx.deleteMessage();
                     ctx.reply(` 
                     Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
-                    \n<i>Vazifani bajarish uchun kerakli fayl va ma'lumotlarni bizga taqdim etishingiz lozim!</i>
+                    \n<i>Hisobot yuborish uchun <b>zarur fayl va ma'lumotlarni</b> taqdim etishingiz lozim</i>
                     `, {
                         parse_mode: "HTML",
                         reply_markup: continue_menu,
@@ -554,7 +543,8 @@ async function SendTask(msg_id, data, ctx) {
     `, {
         parse_mode: "HTML"
     });
-    ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id), InputMediaBuilder.document(data.task_file)], {
+    // InputMediaBuilder.document(data.task_file)
+    ctx.api.sendMediaGroup(msg_id, [InputMediaBuilder.document(data.edsp_file_id), InputMediaBuilder.document(data.edsp_cer_file_id)], {
         reply_to_message_id: info_message.message_id
     })
 
@@ -596,8 +586,6 @@ const admin_main_menu = new Keyboard()
 
 
 pm.command("start", async (ctx) => {
-    console.log(ctx.chat.id);
-
     let data = {
         user_id: ctx.from.id,
         firstname: ctx.from.first_name,
@@ -616,9 +604,6 @@ pm.command("start", async (ctx) => {
         });
         await ctx.conversation.enter("main_menyu_conversation");
     }
-    // await ctx.conversation.enter("payment_conversation");
-
-
 });
 
 
