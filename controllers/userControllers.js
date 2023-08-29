@@ -47,10 +47,48 @@ const removeUser = async (data, ctx) => {
 
 }
 
+// const add_new_feild = async () => {
+
+//     try {
+//         let users = await User.updateMany({},{ $set: { lang: null } },);
+//         console.log(users);
+//     } catch (error) {
+//         console.log(error);
+//     }
+// }
+
+
+const get_user_lang = async(user_id)=>{
+    try{
+        return await User.findOne({user_id});
+    }catch(error){
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
+const update_user_lang = async(data)=>{
+    try{
+       await User.findOneAndUpdate({user_id:data.user_id}, {
+            lang:data.lang
+        });
+    }catch(error){
+        customLogger.log({
+            level: 'error',
+            message: error
+        });
+    }
+}
+
 
 module.exports = {
     userRegister,
-    removeUser
+    removeUser,
+    get_user_lang,
+    update_user_lang
+   
 }
 
 

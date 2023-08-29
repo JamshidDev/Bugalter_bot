@@ -10,20 +10,19 @@ const {
 require('dotenv').config()
 const Database = require("./db");
 
-const { userRegister, removeUser } = require("./controllers/userControllers");
+const { userRegister, removeUser, get_user_lang, update_user_lang, } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
 const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("./controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const customLogger = require("./config/customLogger");
-const { log } = require("winston");
 
 
 
 
 const bot_token = process.env.BOT_TOKEN;
 const payme_tokent = process.env.PROVIDER_TOKEN;
-const DEV_ID = 5604998397;
-const AUTHOR_ID_LIST = [5604998397];
+const DEV_ID = 937912674;
+const AUTHOR_ID_LIST = [937912674];
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
@@ -87,7 +86,6 @@ bot.use(i18n);
 
 
 
-
 bot.on(":successful_payment", async (ctx) => {
     await ctx.deleteMessage()
     let order_id = ctx.msg.successful_payment.invoice_payload;
@@ -98,7 +96,7 @@ bot.on(":successful_payment", async (ctx) => {
     let data = {
         client_id: ctx.from.id,
         order_id: ctx.msg.successful_payment.invoice_payload,
-        payment_amount: ctx.msg.successful_payment.total_amount,
+        payment_amount: ctx.msg.successful_payment.total_amount/100,
         payment_details: ctx.msg.successful_payment
     }
     await add_payment_histry(data)
@@ -491,7 +489,7 @@ const start_menu = new Menu("start_menu")
         let list = ['our_service_btn_title', 'about_us_btn_title'];
         list.forEach((item) => {
             range
-                .text( ctx.t(item), async (ctx) => {
+                .text(ctx.t(item), async (ctx) => {
                     await ctx.answerCallbackQuery();
                     await ctx.deleteMessage();
                     if (item == 'our_service_btn_title') {
@@ -504,7 +502,7 @@ const start_menu = new Menu("start_menu")
                         ctx.api.sendPhoto(client_id, photo_url, {
                             caption: ctx.t("about_us_text"),
                             parse_mode: "HTML",
-                            
+
                         })
 
                         // ctx.reply(ctx.t("about_us_text"), {
@@ -609,23 +607,28 @@ const change_language_menu = new Menu("change_language_menu")
         }];
         list.forEach((item) => {
             range
-                .text((item.key == 'uz'?"🇺🇿 " : "🇷🇺 ") + ctx.t(item.name), async (ctx) => {
+                .text((item.key == 'uz' ? "🇺🇿 " : "🇷🇺 ") + ctx.t(item.name), async (ctx) => {
                     await ctx.answerCallbackQuery();
                     await ctx.i18n.setLocale(item.key);
+                    let data = {
+                        user_id: ctx.from.id,
+                        lang: item.key
+                    }
+                    await update_user_lang(data)
                     let language = await ctx.i18n.getLocale();
                     const back_main_menu = new Keyboard()
-                    .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
-                    .row()
-                    .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
-                    .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
-                    .resized();
-                    await ctx.reply(language == 'uz'? "✅ Dastur tili Uzbek tiliga o'zgardi!" : "✅ Язык программы изменился на русский!", 
-                    {
-                        reply_markup:back_main_menu
-                    }
-                    
+                        .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+                        .row()
+                        .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
+                        .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
+                        .resized();
+                    await ctx.reply(language == 'uz' ? "✅ Dastur tili Uzbek tiliga o'zgardi!" : "✅ Язык программы изменился на русский!",
+                        {
+                            reply_markup: back_main_menu
+                        }
+
                     )
-                   
+
                 })
                 .row();
         })
@@ -635,26 +638,23 @@ pm.use(change_language_menu);
 
 
 
-
-
 pm.command("start", async (ctx) => {
     let language = await ctx.i18n.getLocale();
-    if(!i18n.locales.includes(language)){
+    if (!i18n.locales.includes(language)) {
         await ctx.i18n.setLocale("uz");
     }
     language = await ctx.i18n.getLocale();
-    
+
     let data = {
         user_id: ctx.from.id,
-        
         firstname: ctx.from.first_name,
         username: ctx.from.username || null,
+        lang: language
     }
-    console.log(await ctx.i18n.getLocale());
     await userRegister(data, ctx);
     let is_admin = await ctx.config.is_admin;
     if (is_admin) {
-        await ctx.reply(ctx.t("start_hi"), {
+        await ctx.reply(`Salom Admin :)`, {
             reply_markup: admin_main_menu
         });
     } else {
@@ -687,14 +687,14 @@ pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
 pm.hears("⚙️ Tilni o'zgartirish", async (ctx) => {
     ctx.reply(ctx.t("change_language_title"), {
         parse_mode: "HTML",
-        reply_markup:change_language_menu
+        reply_markup: change_language_menu
     })
 
 })
 pm.hears("⚙️ Изменить язык", async (ctx) => {
     ctx.reply(ctx.t("change_language_title"), {
         parse_mode: "HTML",
-        reply_markup:change_language_menu
+        reply_markup: change_language_menu
     })
 })
 
@@ -730,6 +730,10 @@ async function pricing_order_conversation(conversation, ctx) {
         }
         let order = await pricing_order(data);
         conversation.session.session_db.payment_order = order;
+        let user_lang = await get_user_lang(order.client_id);
+        let admin_lang = await ctx.i18n.getLocale();
+        await ctx.i18n.setLocale(user_lang.lang);
+
         let payment_message = await ctx.api.sendMessage(order.client_id, ctx.t("pricing_order_text", {
             order_number: order.order_number,
             price: price
@@ -742,7 +746,7 @@ async function pricing_order_conversation(conversation, ctx) {
             _id: ctx.session.session_db.selected_order._id,
             payment_message_id: payment_message.message_id
         })
-
+        await ctx.i18n.setLocale(admin_lang);
         await ctx.reply("✅ Narx belgilandi");
     } else {
         await ctx.reply(ctx.t("expire_msg"), {
@@ -772,7 +776,15 @@ async function reject_order_conversation(conversation, ctx) {
         let rejected_order = await reject_order(selected_order._id);
         if (rejected_order.length == 1) {
             let order = rejected_order[0];
-            await ctx.api.sendMessage(order.client_id, `<b> 🛑 Sizning ${order.order_number} raqamli buyurtmangiz adminlar tomonidan raq etildi!</b> \n\n<b>💬 Sabab: </b> <i>${comment}</i> \n Bog'lanish uchun: <b>+998(99) 501-60-04</b> `, { parse_mode: "HTML" })
+
+            let user_lang = await get_user_lang(order.client_id);
+            let admin_lang = await ctx.i18n.getLocale();
+            await ctx.i18n.setLocale(user_lang? user_lang.lang : 'uz');
+            await ctx.api.sendMessage(order.client_id, ctx.t("reject_order_title", {
+                order_number: order.order_number,
+                comment: comment,
+            }), { parse_mode: "HTML" })
+            await ctx.i18n.setLocale(admin_lang);
             await ctx.reply(`✅ ${order.order_number} raqamli buyurtma raq etildi!`);
 
         } else {
@@ -855,7 +867,7 @@ const order_deatils_menu = new Menu("order_deatils_menu")
                 await ctx.reply(`
 <b>To'lov ma'lumotlari</b>
 Buyurtma raqami: <b>${msg?.order_id?.order_number}</b>
-To'lov summasi: <b>${msg?.payment_amount / 100}</b> so'm
+To'lov summasi: <b>${msg?.payment_amount}</b> so'm
 To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
             `, {
                     parse_mode: "HTML"
@@ -896,10 +908,13 @@ To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
                 await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli topshirildi ✅ </i>`, {
                     parse_mode: "HTML"
                 });
-
-                await ctx.api.sendMessage(selected_order.client_id, `<b>🏁 Buyurtma bajarildi</b> \n\n<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>`, {
+                let user_lang = await get_user_lang(selected_order.client_id);
+                let admin_lang = await ctx.i18n.getLocale();
+                await ctx.i18n.setLocale(user_lang ? user_lang.lang : 'uz');
+                await ctx.api.sendMessage(selected_order.client_id, ctx.t("finished_order_title", { order_number: selected_order.order_number }), {
                     parse_mode: "HTML"
                 })
+                await ctx.i18n.setLocale(admin_lang);
             } else {
                 await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtmani yalunlay olmaysiz! </i> ⚠️`, {
                     parse_mode: "HTML"

@@ -10,19 +10,9 @@ start_addition =
     ❗️ Endi bu muammo emas !!!
     ☝️ Biz sizga o'zimizning sifatli va hamyonbob xizmatlarimizni taklif qilamiz.
 
-    👉 Bizning xizmatlarimiz:
-    1️⃣ Barcha turdagi korxonalar MCHJ, Oilaviy korxona, Xususiy korxona, YATT ochish, ustav va tasis shartnomalari tuzish va ularni davlat ro'yxatidan o'tkazish.
+    🖇Bizning firma tadbirkorlar va buxgalterlar uchun soliq va moliyaviy hisobotlarni yuborishda amaliy yordam beradi!
 
-    2️⃣ Chakana va ulgurji savdo, ishlab chiqarish, xizmat ko'rsatish korxonalariga sifatli, tezkor va ishonchli buxgalteriya xizmatlarini ko'rsatish.
-
-    3️⃣ Barcha turdagi soliqlarni hisoblash va hisobotlarni topshirish, Soliq maslaxatlari:
-    ✅ Foyda solig'i
-    ✅ Qo'shilgan qiymat solig'i (QQS)
-    ✅ Aylanmadan soliq
-    ✅ Yer qaridan foydalanganlik uchun soliq
-    ✅ Jismoniy shaxslardan olinadigan daromad solig'i
-    ✅ Dividend solig'i
-    ✅ Mol-mulk va yer solig'i
+    🧮Qaysi hisobot turini yubormoqchisiz, quyida oʼzingizga zarur boʼlgan boʼlimni tanlang
 
 our_service_btn_title = ♻️ Bizning xizmatlar
 
@@ -76,3 +66,11 @@ pricing_order_text = <b>Sizning buyurtmangiz qabul qilindi</b>
 change_language_title = <b>⚙️ Dastur tilini sozlash</b>
 language_uz = Uzbek tili
 language_ru = Rus tili
+
+finished_order_title = <b>🏁 Buyurtma bajarildi</b>
+    <i><b> {$order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>
+
+reject_order_title =<b> 🛑 Sizning {$order_number} raqamli buyurtmangiz adminlar tomonidan raq etildi!</b>
+
+    <b>💬 Sabab: </b> <i>{$comment}</i> 
+    Bog'lanish uchun: <b>+998(94) 683-83-40</b> 
