@@ -8,13 +8,17 @@ const {
 } = require("@grammyjs/conversations");
 require('dotenv').config()
 const Database = require("./db");
+const { FileFlavor, hydrateFiles } = require("@grammyjs/files")
 
 const { userRegister, removeUser } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
 const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("./controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
+const { add_bank, active_bank_list } = require("./controllers/bankControllers")
 const customLogger = require("./config/customLogger");
-const { log } = require("winston");
+const ExcelJS = require('exceljs');
+const xlsx_reader = require('xlsx')
+
 
 
 
@@ -22,7 +26,7 @@ const { log } = require("winston");
 const bot_token = process.env.BOT_TOKEN;
 const payme_tokent = process.env.PROVIDER_TOKEN;
 const DEV_ID = 5604998397;
-const AUTHOR_ID_LIST = [5604998397];
+const AUTHOR_ID_LIST = [5604998397, 937912674];
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
@@ -50,6 +54,12 @@ bot.use(session({
                 },
                 selected_order: null,
                 payment_order: null,
+                bank: {
+                    debet: null,
+                    kredit: null,
+                    result_uz: null,
+                    result_ru: null,
+                }
             }
         },
         storage: new MemorySessionStorage(),
@@ -57,9 +67,6 @@ bot.use(session({
     },
     conversation: {},
 }));
-
-
-
 
 bot.on(":successful_payment", async (ctx) => {
     await ctx.deleteMessage()
@@ -87,7 +94,7 @@ bot.on(":successful_payment", async (ctx) => {
         parse_mode: "HTML"
     })
 })
-
+bot.api.config.use(hydrateFiles(bot.token));
 
 bot.on("pre_checkout_query", async (ctx) => {
     let pre_checkout_query_id = ctx.update.pre_checkout_query.id;
@@ -162,7 +169,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar"]
+    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔴 Stop"]
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -185,7 +192,7 @@ const payment_btn_menu = new Menu("payment_btn_menu")
             let title = order[0].service_category?.name;
             let description = order[0].order_number + " raqamli buyurtmangizni bajarish uchun to'lov qilishingiz lozim!";
             let payload = order_id;
-            let provider_token = payme_tokent ;
+            let provider_token = payme_tokent;
             let currency = "UZS";
             let prices = [{
                 label: "UZS",
@@ -225,6 +232,8 @@ bot.use(createConversation(task_data_conversation));
 bot.use(createConversation(creating_new_category));
 bot.use(createConversation(pricing_order_conversation));
 bot.use(createConversation(reject_order_conversation));
+bot.use(createConversation(create_bank_conversation));
+bot.use(createConversation(read_excel_conversation));
 
 
 
@@ -301,7 +310,7 @@ async function task_data_conversation(conversation, ctx) {
         } while (!ctx.msg.document);
     }
     let file_id_1 = ctx.msg.document.file_id
-    
+
     let send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_1);
     conversation.session.session_db.task.edsp_file_id = send_msg.document.file_id;
     // EDSP sertificate
@@ -318,7 +327,7 @@ async function task_data_conversation(conversation, ctx) {
         } while (!ctx.msg.document);
     }
     let file_id_2 = ctx.msg.document.file_id
-    
+
     send_msg = await ctx.api.sendDocument(Database_channel_id, file_id_2);
     conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
 
@@ -438,9 +447,136 @@ async function creating_new_category(conversation, ctx) {
     return
 }
 
+async function create_bank_conversation(conversation, ctx) {
+    let abort_action = new Keyboard()
+        .text("🔴 Amalni bekor qilish")
+        .resized();
+    await ctx.reply("<b>✍️ Debet raqamni kiriting</b> \n <i>Masalan: <b>5010; 5020</b></i>", {
+        parse_mode: "HTML",
+        reply_markup: abort_action,
+    })
+    ctx = await conversation.wait();
+    if (!ctx.msg.text) {
+        do {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot kiritildi</b>\n\n <i>Debet raqamni kiriting</i> ", {
+                parse_mode: "HTML",
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.text);
+    }
+    conversation.session.session_db.bank.debet = ctx.msg.text
+    await ctx.reply("<b>✍️ Kredit raqamni kiriting</b> \n <i>Masalan: <b>5010; 5020</b></i>", {
+        parse_mode: "HTML"
+    })
+    ctx = await conversation.wait();
+    if (!ctx.msg.text) {
+        do {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot kiritildi</b>\n\n <i>Kredit raqamni kiriting</i> ", {
+                parse_mode: "HTML",
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.text);
+    }
+    conversation.session.session_db.bank.kredit = ctx.msg.text
+    await ctx.reply("<b>✍️ Natijani kiriting! (Uz)</b> \n <i>Masalan: <b>Kassaga pul kelib tushdi</b></i>", {
+        parse_mode: "HTML"
+    })
+    ctx = await conversation.wait();
+    if (!ctx.msg.text) {
+        do {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot kiritildi</b>\n\n <i>Natijani kiriting! (Uz)</i> ", {
+                parse_mode: "HTML",
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.text);
+    }
+    conversation.session.session_db.bank.result_uz = ctx.msg.text;
+    await ctx.reply("<b>✍️ Natijani kiriting! (Ru)</b> \n <i>Masalan: <b>Kassaga pul kelib tushdi</b></i>", {
+        parse_mode: "HTML"
+    })
+    ctx = await conversation.wait();
+    if (!ctx.msg.text) {
+        do {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot kiritildi</b>\n\n <i>Natijani kiriting! (Ru)</i> ", {
+                parse_mode: "HTML",
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.text);
+    }
+    conversation.session.session_db.bank.result_ru = ctx.msg.text;
+    let data = conversation.session.session_db.bank;
+
+    let status = await add_bank(data);
+
+    if (status) {
+        await ctx.reply("✅ Muvofaqiyatli qo'shildi")
+    } else {
+        await ctx.reply("❌ Mavjud bo'lgan debet va kredit raqamlar kiritildi")
+    }
+}
+
+async function read_excel_conversation(conversation, ctx) {
+    let abort_action = new Keyboard()
+        .text("🔴 Amalni bekor qilish")
+        .resized();
+    await ctx.reply("Excel faylni yuboring!", {
+        reply_markup: abort_action
+    });
+    ctx = await conversation.wait()
+
+    if (!ctx.msg.document) {
+        do {
+            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i> Excel fayl yuklang... </i> ", {
+                parse_mode: "HTML",
+            });
+            ctx = await conversation.wait();
+        } while (!ctx.msg.document);
+    }
+
+    const file = await ctx.getFile();
+    let path_full = file.file_path;
+
+    if (file.file_path.includes('.xls')) {
+        const path = await file.download();
+        const workbook = xlsx_reader.readFile(path);
+        let workbook_sheet = workbook.SheetNames;
+        let workbook_response = xlsx_reader.utils.sheet_to_json(
+            workbook.Sheets[workbook_sheet[0]]
+        );
+
+        let data_list = workbook_response;
+        await ctx.reply("✅ Yuklash boshlandi....")
+        for (let i = 0; i < data_list.length; i++) {
+
+            let bank_data = data_list[i];
+            let status = await add_bank(bank_data);
+            if (!status) {
+                await ctx.reply(`
+<i>⚠️ Majud bo'lgan debet va kredit raqamlar yoki ma'lumotida xatolik mavjud</i>  
+Debet raqam: <b>${bank_data.debet}</b>              
+Kredit raqam: <b>${bank_data.kredit}</b>                           
+                `, {
+                    parse_mode: "HTML"
+                })
+            }
+        }
+
+        await ctx.reply("✅ Yuklash tugadi")
 
 
-bot.command("upload", async(ctx)=>{
+
+    } else {
+        await ctx.reply("⚠️ Iltimos Excel fayl yuklang!")
+    }
+
+
+
+
+}
+
+
+
+bot.command("upload", async (ctx) => {
     await ctx.conversation.enter("upload_file_conversation");
 })
 const continue_menu = new Menu("continue_menu")
@@ -572,6 +708,7 @@ const admin_main_menu = new Keyboard()
     .text("♻️ Buyurtmalar")
     .text("♻️ Xizmatlar")
     .row()
+    .text("♻️ Funksiya")
     .resized();
 
 
@@ -872,6 +1009,58 @@ pm.hears("♻️ Buyurtmalar", async (ctx) => {
 
 
 
+
+const admin_function_menu = new Menu("admin_function_menu")
+    .text("➕ Yangi qo'shish", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.conversation.enter("create_bank_conversation");
+    })
+    .row()
+    .text("📁 Excel orqali yuklash", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.conversation.enter("read_excel_conversation");
+    })
+    .row()
+    .text("📄 Ko'rish", async (ctx) => {
+        await ctx.answerCallbackQuery()
+        await ctx.reply("Tez orada ishga tushadi...");
+
+
+
+    })
+    .row()
+    .text("✏️ Tahrirlash", async (ctx) => {
+        await ctx.answerCallbackQuery();
+        await ctx.reply("Tez orada ishga tushadi...");
+    })
+pm.use(admin_function_menu);
+
+pm.hears("♻️ Funksiya", async (ctx) => {
+    await ctx.reply("📟 <b>Funksiyalar ustida amallar</b>", {
+        reply_markup: admin_function_menu,
+        parse_mode: "HTML"
+    });
+})
+
+pm.hears("🔴 Amalni bekor qilish", async (ctx) => {
+    await ctx.reply(`⚡️ Asosiy admin menu ⚡️`, {
+        reply_markup: admin_main_menu
+    });
+})
+
+// bot.on("msg:file", async(ctx)=>{
+
+
+//     const file = await ctx.getFile();
+//     const path = await file.download();
+//     const workbook = xlsx_reader.readFile(path);
+//     let workbook_sheet = workbook.SheetNames;                
+//     let workbook_response = xlsx_reader.utils.sheet_to_json(        
+//       workbook.Sheets[workbook_sheet[0]]
+//     );
+//     console.log(workbook_response);
+
+// })
 
 
 
