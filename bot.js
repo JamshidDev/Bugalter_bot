@@ -17,25 +17,17 @@ const { create_order, order_list, active_order, get_order, pricing_order, orderi
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const { add_bank, active_bank_list } = require("./controllers/bankControllers")
 const customLogger = require("./config/customLogger");
-<<<<<<< HEAD
 const ExcelJS = require('exceljs');
 const xlsx_reader = require('xlsx')
 
-=======
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 
 
 
 
 const bot_token = process.env.BOT_TOKEN;
 const payme_tokent = process.env.PROVIDER_TOKEN;
-<<<<<<< HEAD
 const DEV_ID = 5604998397;
 const AUTHOR_ID_LIST = [5604998397, 937912674];
-=======
-const DEV_ID = 937912674;
-const AUTHOR_ID_LIST = [937912674];
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
@@ -78,8 +70,6 @@ bot.use(session({
     __language_code: {},
 }));
 
-<<<<<<< HEAD
-=======
 const i18n = new I18n({
     defaultLocale: "uz",
     useSession: true,
@@ -107,7 +97,6 @@ bot.use(i18n);
 
 
 
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 bot.on(":successful_payment", async (ctx) => {
     await ctx.deleteMessage()
     let order_id = ctx.msg.successful_payment.invoice_payload;
@@ -209,11 +198,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-<<<<<<< HEAD
-    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔴 Stop"]
-=======
     let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔙 Главное меню", "♻️ Наши услуги"]
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -584,7 +569,6 @@ Kredit raqam: <b>${bank_data.kredit}</b>
         await ctx.reply("✅ Yuklash tugadi")
 
 
-<<<<<<< HEAD
 
     } else {
         await ctx.reply("⚠️ Iltimos Excel fayl yuklang!")
@@ -597,8 +581,6 @@ Kredit raqam: <b>${bank_data.kredit}</b>
 
 
 
-=======
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 bot.command("upload", async (ctx) => {
     await ctx.conversation.enter("upload_file_conversation");
 })
@@ -1074,6 +1056,7 @@ To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
                     parse_mode: "HTML"
                 })
                 await ctx.i18n.setLocale(admin_lang);
+
             } else {
                 await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtmani yalunlay olmaysiz! </i> ⚠️`, {
                     parse_mode: "HTML"

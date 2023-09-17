@@ -1,11 +1,8 @@
 {
   "dependencies": {
     "@grammyjs/conversations": "^1.1.2",
-<<<<<<< HEAD
     "@grammyjs/files": "^1.0.4",
-=======
     "@grammyjs/i18n": "^1.0.1",
->>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
     "@grammyjs/menu": "^1.2.1",
     "@grammyjs/stateless-question": "^3.0.1",
     "dotenv": "^16.3.1",
