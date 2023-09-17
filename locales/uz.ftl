@@ -18,6 +18,8 @@ our_service_btn_title = ♻️ Bizning xizmatlar
 
 about_us_btn_title = ℹ️ Biz haqimizda
 
+ikpu_search_btn_text =🔍 IKPU  qidiruv
+
 about_us_text = ⚜️⚜️ <b>Biz haqimizda</b>⚜️⚜️
     Kompaniyamiz kichik va o'rta biznes uchun yuqori sifatli buxgalteriya xizmatlarini taklif etadi. Biz buxgalteriya hisobi, soliqni rejalashtirish, moliyaviy tahlil va hisobotlarni o'z ichiga olgan to'liq xizmatlarni taklif etamiz. Bizning tajribali buxgalterlar jamoasi sizning biznesingizni rivojlantirishga e'tibor qaratishingiz uchun buxgalteriya hisobingiz to'g'ri va o'z vaqtida bo'lishini ta'minlaydi. Xizmatlarimiz haqida ko'proq ma'lumot olish, shuningdek muvaffaqiyatga erishishingizda sizga yordam berishimiz uchun biz bilan bog'laning.
 

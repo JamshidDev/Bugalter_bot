@@ -198,7 +198,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
-    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔙 Главное меню", "♻️ Наши услуги"]
+    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔙 Главное меню", "♻️ Наши услуги", "🔴 Amalni bekor qilish"]
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -801,6 +801,7 @@ pm.command("start", async (ctx) => {
     } else {
         const back_main_menu = new Keyboard()
             .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+            .text(ctx.t("ikpu_search_btn_text"))
             .row()
             .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
             .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
