@@ -2,6 +2,7 @@
 const { Bot, session, MemorySessionStorage, Keyboard, InlineKeyboard, InputFile, InputMediaDocument, InputMediaBuilder } = require("grammy");
 const { Menu, MenuRange } = require("@grammyjs/menu");
 const { StatelessQuestion } = require("@grammyjs/stateless-question");
+const { I18n } = require("@grammyjs/i18n");
 const {
     conversations,
     createConversation,
@@ -10,23 +11,31 @@ require('dotenv').config()
 const Database = require("./db");
 const { FileFlavor, hydrateFiles } = require("@grammyjs/files")
 
-const { userRegister, removeUser } = require("./controllers/userControllers");
+const { userRegister, removeUser, get_user_lang, update_user_lang, } = require("./controllers/userControllers");
 const { category_list, add_category, remove_category } = require("./controllers/categoryController");
 const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("./controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("./controllers/paymentcontroller")
 const { add_bank, active_bank_list } = require("./controllers/bankControllers")
 const customLogger = require("./config/customLogger");
+<<<<<<< HEAD
 const ExcelJS = require('exceljs');
 const xlsx_reader = require('xlsx')
 
+=======
+>>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 
 
 
 
 const bot_token = process.env.BOT_TOKEN;
 const payme_tokent = process.env.PROVIDER_TOKEN;
+<<<<<<< HEAD
 const DEV_ID = 5604998397;
 const AUTHOR_ID_LIST = [5604998397, 937912674];
+=======
+const DEV_ID = 937912674;
+const AUTHOR_ID_LIST = [937912674];
+>>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 const ACTION_GROUP_ID = -963886772;
 const ERROR_LOG_ID = -927838041;
 const Database_channel_id = -1001908517057;
@@ -66,8 +75,39 @@ bot.use(session({
         // getSessionKey,
     },
     conversation: {},
+    __language_code: {},
 }));
 
+<<<<<<< HEAD
+=======
+const i18n = new I18n({
+    defaultLocale: "uz",
+    useSession: true,
+    directory: "locales",
+    globalTranslationContext(ctx) {
+        return { first_name: ctx.from?.first_name ?? "" };
+    },
+});
+
+bot.use(i18n);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 bot.on(":successful_payment", async (ctx) => {
     await ctx.deleteMessage()
     let order_id = ctx.msg.successful_payment.invoice_payload;
@@ -78,7 +118,7 @@ bot.on(":successful_payment", async (ctx) => {
     let data = {
         client_id: ctx.from.id,
         order_id: ctx.msg.successful_payment.invoice_payload,
-        payment_amount: ctx.msg.successful_payment.total_amount,
+        payment_amount: ctx.msg.successful_payment.total_amount/100,
         payment_details: ctx.msg.successful_payment
     }
     await add_payment_histry(data)
@@ -169,7 +209,11 @@ bot.on("my_chat_member", async (ctx) => {
 
 
 bot.use(async (ctx, next) => {
+<<<<<<< HEAD
     let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔴 Stop"]
+=======
+    let commands_list = ["🔙 Asosiy menu", "♻️ Bizning xizmatlar", "♻️ Buyurtmalar", "♻️ Xizmatlar", "🔙 Главное меню", "♻️ Наши услуги"]
+>>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
     if (commands_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -246,8 +290,7 @@ const pm = bot.chatType("private")
 
 
 async function our_service_conversation(conversation, ctx) {
-    ctx.reply(`Siz qaysi <b>Soliq yoki moliyaviy hisobotini</b> yuborishimizni hohlaysiz? 
-     \n\n<i>Quyidagilarni Tanlang! 👇</i>`, {
+    ctx.reply(ctx.t("service_title"), {
         reply_markup: our_service_menu,
         parse_mode: "HTML",
     })
@@ -259,28 +302,7 @@ async function main_menyu_conversation(conversation, ctx) {
     let client_id = ctx.from.id;
     let photo_url = new InputFile("./resource/picture/start_picture.png");
     ctx.api.sendPhoto(client_id, photo_url, {
-        caption: ` ⚡️<b>Asosiy menu</b>⚡️ \n\n 
-❓ Sizda buxgalteriya bilan bog'liq muammolar bormi?
-❓ Soliq tekshiruvlaridan charchadingizmi?
-❓ Xato va kamchiliklar ko'payib ketdimi?
-
-❗️ Endi bu muammo emas !!!
-☝️ Biz sizga o'zimizning sifatli va hamyonbob xizmatlarimizni taklif qilamiz.
-
-👉 Bizning xizmatlarimiz:
-1️⃣ Barcha turdagi korxonalar MCHJ, Oilaviy korxona, Xususiy korxona, YATT ochish, ustav va tasis shartnomalari tuzish va ularni davlat ro'yxatidan o'tkazish.
-
-2️⃣ Chakana va ulgurji savdo, ishlab chiqarish, xizmat ko'rsatish korxonalariga sifatli, tezkor va ishonchli buxgalteriya xizmatlarini ko'rsatish.
-
-3️⃣ Barcha turdagi soliqlarni hisoblash va hisobotlarni topshirish, Soliq maslaxatlari:
-✅ Foyda solig'i
-✅ Qo'shilgan qiymat solig'i (QQS)
-✅ Aylanmadan soliq
-✅ Yer qaridan foydalanganlik uchun soliq
-✅ Jismoniy shaxslardan olinadigan daromad solig'i
-✅ Dividend solig'i
-✅ Mol-mulk va yer solig'i
-        `,
+        caption: ctx.t("start_addition"),
         parse_mode: "HTML",
         reply_markup: start_menu
     })
@@ -296,14 +318,14 @@ async function task_data_conversation(conversation, ctx) {
         conversation.session.session_db.task.comment = null,
 
         // EDSP key files
-        await ctx.reply("<i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i>", {
+        await ctx.reply(ctx.t("task_key_title"), {
             parse_mode: "HTML",
         });
 
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 ETSP kalitini yuklang (YTT va firmalarga davlat hizmatlari markazidan beriladigan  2 ta fayl)</i> ", {
+            await ctx.reply(ctx.t("task_key_title_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
@@ -320,7 +342,7 @@ async function task_data_conversation(conversation, ctx) {
     ctx = await conversation.wait();
     if (!ctx.msg.document) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔑 EDSP sertifikatni yuklang </i> ", {
+            await ctx.reply(ctx.t("task_cer_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
@@ -332,13 +354,13 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.edsp_cer_file_id = send_msg.document.file_id;
 
     // Password
-    await ctx.reply("<b>🔐 Parolni kiriting</b>", {
+    await ctx.reply(ctx.t("password_title"), {
         parse_mode: "HTML",
     });
     ctx = await conversation.wait();
     if (!ctx.msg.text) {
         do {
-            await ctx.reply("⚠️ <b>Noto'g'ri ma'lumot yuklandi</b>\n\n <i>🔐 Parolni kiriting</i> ", {
+            await ctx.reply(ctx.t("password_title_error"), {
                 parse_mode: "HTML",
             });
             ctx = await conversation.wait();
@@ -365,7 +387,7 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.task_file = "no file_id";
 
     // Comment text
-    await ctx.reply("💬 Izoh yozing");
+    await ctx.reply(ctx.t("comment_title"));
     ctx = await conversation.wait();
     conversation.session.session_db.task.comment = ctx.msg?.text;
     if (ctx.session.session_db.selected_service && ctx.session.session_db.task.edsp_file_id) {
@@ -389,11 +411,9 @@ async function task_data_conversation(conversation, ctx) {
             await SendTask(sender_list[index], data, ctx);
         }
 
-        await ctx.reply(`
-<i>✅  Buyurtmangiz adminlarga jo'natildi iltimos adminlar javobini kuting. Adminlar 60 daqiqa ichida javob qaytarishadi.</i>
-
-🔰 Buyurtma raqami: <b>${order.order_number}</b>
-        `, {
+        await ctx.reply(ctx.t("order_create", {
+            order_number: order.order_number
+        }), {
             parse_mode: "HTML"
         });
         //     await ctx.reply(`
@@ -406,7 +426,7 @@ async function task_data_conversation(conversation, ctx) {
         //     })
         return
     } else {
-        await ctx.reply("🛑 <b>Kutilmagan xatolik yuz berdi</b>\n\n <i>Itlimos qayta harakat qiling</i> ", {
+        await ctx.reply(ctx.t("expire_msg"), {
             parse_mode: "HTML",
         });
     }
@@ -564,6 +584,7 @@ Kredit raqam: <b>${bank_data.kredit}</b>
         await ctx.reply("✅ Yuklash tugadi")
 
 
+<<<<<<< HEAD
 
     } else {
         await ctx.reply("⚠️ Iltimos Excel fayl yuklang!")
@@ -576,13 +597,23 @@ Kredit raqam: <b>${bank_data.kredit}</b>
 
 
 
+=======
+>>>>>>> d8760c65ac91c4b815d88148ec8bca8435dbae42
 bot.command("upload", async (ctx) => {
     await ctx.conversation.enter("upload_file_conversation");
 })
 const continue_menu = new Menu("continue_menu")
-    .text("♻️ Boshlash", async (ctx) => {
-        await ctx.conversation.enter("task_data_conversation");
-    });
+    .dynamic(async (ctx, range) => {
+        let list = ['start_go_title']
+        list.forEach((item) => {
+            range
+                .text("♻️ " + ctx.t(item), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.conversation.enter("task_data_conversation");
+                })
+                .row();
+        })
+    })
 pm.use(continue_menu)
 
 
@@ -594,10 +625,9 @@ const our_service_menu = new Menu("our_service_menu")
                 .text("🔰 " + item.name, async (ctx) => {
                     ctx.session.session_db.selected_service = item;
                     ctx.deleteMessage();
-                    ctx.reply(` 
-                    Tanlangan xizmat turi: <b>🔰  ${item.name}</b> 
-                    \n<i>Hisobot yuborish uchun <b>zarur fayl va ma'lumotlarni</b> taqdim etishingiz lozim</i>
-                    `, {
+                    ctx.reply(ctx.t("selected_service", {
+                        service_name: item.name
+                    }), {
                         parse_mode: "HTML",
                         reply_markup: continue_menu,
                     })
@@ -613,23 +643,35 @@ pm.use(our_service_menu);
 
 
 const start_menu = new Menu("start_menu")
-    .text("♻️ Bizning xizmatlar", async (ctx) => {
-        await ctx.answerCallbackQuery();
-        await ctx.deleteMessage();
-        await ctx.conversation.enter("our_service_conversation");
-    })
-    .row()
-    .text("ℹ️ Biz haqimizda", async (ctx) => {
-        await ctx.answerCallbackQuery();
-        await ctx.deleteMessage();
-        ctx.reply(`⚜️⚜️ <b>Biz haqimizda</b>⚜️⚜️
- \n<i>Kompaniya turli faoliyat turlaridagi korxonalarda buxgalteriya xizmatlarini ko'rsatish sohasida 10 yildan ortiq tajribaga ega.
- Mutaxassislarimiz iqtisodiy ma'lumotga va moliyaviy hisob va korxona boshqaruvi sohasida xalqaro sertifikatlarga ega. Kompaniyaning majburiy talabi muntazam ravishda malaka oshirishdir.</i>       
-        `, {
-            parse_mode: "HTML"
-        });
+    .dynamic(async (ctx, range) => {
+        let list = ['our_service_btn_title', 'about_us_btn_title'];
+        list.forEach((item) => {
+            range
+                .text(ctx.t(item), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.deleteMessage();
+                    if (item == 'our_service_btn_title') {
+                        await ctx.conversation.enter("our_service_conversation");
+                    } else {
 
+
+                        let client_id = ctx.from.id;
+                        let photo_url = new InputFile("./resource/picture/document.jpg");
+                        ctx.api.sendPhoto(client_id, photo_url, {
+                            caption: ctx.t("about_us_text"),
+                            parse_mode: "HTML",
+
+                        })
+
+                        // ctx.reply(ctx.t("about_us_text"), {
+                        //     parse_mode: "HTML"
+                        // });
+                    }
+                })
+                .row();
+        })
     })
+
 pm.use(start_menu);
 
 
@@ -698,11 +740,7 @@ async function SendTask(msg_id, data, ctx) {
 
 
 
-const back_main_menu = new Keyboard()
-    .text("♻️ Bizning xizmatlar")
-    .row()
-    .text("🔙 Asosiy menu")
-    .resized();
+
 
 const admin_main_menu = new Keyboard()
     .text("♻️ Buyurtmalar")
@@ -716,27 +754,76 @@ const admin_main_menu = new Keyboard()
 
 
 
+const change_language_menu = new Menu("change_language_menu")
+    .dynamic(async (ctx, range) => {
+        let list = [{
+            name: "language_uz",
+            key: "uz"
+        },
+        {
+            name: "language_ru",
+            key: "ru"
+        }];
+        list.forEach((item) => {
+            range
+                .text((item.key == 'uz' ? "🇺🇿 " : "🇷🇺 ") + ctx.t(item.name), async (ctx) => {
+                    await ctx.answerCallbackQuery();
+                    await ctx.i18n.setLocale(item.key);
+                    let data = {
+                        user_id: ctx.from.id,
+                        lang: item.key
+                    }
+                    await update_user_lang(data)
+                    let language = await ctx.i18n.getLocale();
+                    const back_main_menu = new Keyboard()
+                        .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+                        .row()
+                        .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
+                        .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
+                        .resized();
+                    await ctx.reply(language == 'uz' ? "✅ Dastur tili Uzbek tiliga o'zgardi!" : "✅ Язык программы изменился на русский!",
+                        {
+                            reply_markup: back_main_menu
+                        }
 
+                    )
 
+                })
+                .row();
+        })
+    })
 
+pm.use(change_language_menu);
 
 
 
 pm.command("start", async (ctx) => {
+    let language = await ctx.i18n.getLocale();
+    if (!i18n.locales.includes(language)) {
+        await ctx.i18n.setLocale("uz");
+    }
+    language = await ctx.i18n.getLocale();
+
     let data = {
         user_id: ctx.from.id,
         firstname: ctx.from.first_name,
         username: ctx.from.username || null,
+        lang: language
     }
-
     await userRegister(data, ctx);
     let is_admin = await ctx.config.is_admin;
     if (is_admin) {
-        await ctx.reply(`👨‍💻 Salom Admin`, {
+        await ctx.reply(`Salom Admin :)`, {
             reply_markup: admin_main_menu
         });
     } else {
-        await ctx.reply(`Salom ${ctx.from.first_name}. Xush kelibsiz!`, {
+        const back_main_menu = new Keyboard()
+            .text(language == 'uz' ? "♻️ Bizning xizmatlar" : "♻️ Наши услуги")
+            .row()
+            .text(language == 'uz' ? "🔙 Asosiy menu" : "🔙 Главное меню")
+            .text(language == 'uz' ? "⚙️ Tilni o'zgartirish" : "⚙️ Изменить язык")
+            .resized();
+        await ctx.reply(ctx.t("start_hi"), {
             reply_markup: back_main_menu
         });
         await ctx.conversation.enter("main_menyu_conversation");
@@ -747,8 +834,27 @@ pm.command("start", async (ctx) => {
 pm.hears("🔙 Asosiy menu", async (ctx) => {
     await ctx.conversation.enter("main_menyu_conversation");
 })
+pm.hears("🔙 Главное меню", async (ctx) => {
+    await ctx.conversation.enter("main_menyu_conversation");
+})
+pm.hears("♻️ Наши услуги", async (ctx) => {
+    await ctx.conversation.enter("our_service_conversation");
+})
 pm.hears("♻️ Bizning xizmatlar", async (ctx) => {
     await ctx.conversation.enter("our_service_conversation");
+})
+pm.hears("⚙️ Tilni o'zgartirish", async (ctx) => {
+    ctx.reply(ctx.t("change_language_title"), {
+        parse_mode: "HTML",
+        reply_markup: change_language_menu
+    })
+
+})
+pm.hears("⚙️ Изменить язык", async (ctx) => {
+    ctx.reply(ctx.t("change_language_title"), {
+        parse_mode: "HTML",
+        reply_markup: change_language_menu
+    })
 })
 
 
@@ -783,12 +889,14 @@ async function pricing_order_conversation(conversation, ctx) {
         }
         let order = await pricing_order(data);
         conversation.session.session_db.payment_order = order;
-        let payment_message = await ctx.api.sendMessage(order.client_id, `<b>Sizning buyurtmangiz qabul qilindi</b>
-♻️ Buyurtma raqami : <b>${order.order_number}</b>
-💵 To'lov summasi: <b>${price} so'm</b>
-📞 Bog'lanish: <b>+998(99) 501-60-04</b>
+        let user_lang = await get_user_lang(order.client_id);
+        let admin_lang = await ctx.i18n.getLocale();
+        await ctx.i18n.setLocale(user_lang.lang);
 
-<i>Buyurtma to'lov amalga oshirilgandan keyin 12 soat ichida bajarilib sizga bot orqali xabar yuboriladi!</i>`, {
+        let payment_message = await ctx.api.sendMessage(order.client_id, ctx.t("pricing_order_text", {
+            order_number: order.order_number,
+            price: price
+        }), {
             parse_mode: "HTML",
             reply_markup: payment_btn_menu,
 
@@ -797,10 +905,10 @@ async function pricing_order_conversation(conversation, ctx) {
             _id: ctx.session.session_db.selected_order._id,
             payment_message_id: payment_message.message_id
         })
-
+        await ctx.i18n.setLocale(admin_lang);
         await ctx.reply("✅ Narx belgilandi");
     } else {
-        await ctx.reply("🛑 <b> Eskirgan xabar</b> \n\n <i>Iltimos qayta harakat qiling!</i>", {
+        await ctx.reply(ctx.t("expire_msg"), {
             parse_mode: "HTML",
 
         });
@@ -827,7 +935,15 @@ async function reject_order_conversation(conversation, ctx) {
         let rejected_order = await reject_order(selected_order._id);
         if (rejected_order.length == 1) {
             let order = rejected_order[0];
-            await ctx.api.sendMessage(order.client_id, `<b> 🛑 Sizning ${order.order_number} raqamli buyurtmangiz adminlar tomonidan raq etildi!</b> \n\n<b>💬 Sabab: </b> <i>${comment}</i> \n Bog'lanish uchun: <b>+998(99) 501-60-04</b> `, { parse_mode: "HTML" })
+
+            let user_lang = await get_user_lang(order.client_id);
+            let admin_lang = await ctx.i18n.getLocale();
+            await ctx.i18n.setLocale(user_lang? user_lang.lang : 'uz');
+            await ctx.api.sendMessage(order.client_id, ctx.t("reject_order_title", {
+                order_number: order.order_number,
+                comment: comment,
+            }), { parse_mode: "HTML" })
+            await ctx.i18n.setLocale(admin_lang);
             await ctx.reply(`✅ ${order.order_number} raqamli buyurtma raq etildi!`);
 
         } else {
@@ -910,7 +1026,7 @@ const order_deatils_menu = new Menu("order_deatils_menu")
                 await ctx.reply(`
 <b>To'lov ma'lumotlari</b>
 Buyurtma raqami: <b>${msg?.order_id?.order_number}</b>
-To'lov summasi: <b>${msg?.payment_amount / 100}</b> so'm
+To'lov summasi: <b>${msg?.payment_amount}</b> so'm
 To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
             `, {
                     parse_mode: "HTML"
@@ -951,10 +1067,13 @@ To'lov sanasi: <b>${new Date(msg.created_at).toLocaleDateString("en-US")}</b>
                 await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli topshirildi ✅ </i>`, {
                     parse_mode: "HTML"
                 });
-
-                await ctx.api.sendMessage(selected_order.client_id, `<b>🏁 Buyurtma bajarildi</b> \n\n<i><b>${selected_order.order_number}</b> raqamli buyurtma muvofaqiyatli bajarildi ✅ </i>`, {
+                let user_lang = await get_user_lang(selected_order.client_id);
+                let admin_lang = await ctx.i18n.getLocale();
+                await ctx.i18n.setLocale(user_lang ? user_lang.lang : 'uz');
+                await ctx.api.sendMessage(selected_order.client_id, ctx.t("finished_order_title", { order_number: selected_order.order_number }), {
                     parse_mode: "HTML"
                 })
+                await ctx.i18n.setLocale(admin_lang);
             } else {
                 await ctx.reply(`<i><b>${selected_order.order_number}</b> raqamli buyurtmani yalunlay olmaysiz! </i> ⚠️`, {
                     parse_mode: "HTML"
