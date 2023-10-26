@@ -60,7 +60,8 @@ const removeUser = async (data, ctx) => {
 
 const get_user_lang = async(user_id)=>{
     try{
-        return await User.findOne({user_id});
+        // return await User.findOne({user_id});
+        return []
     }catch(error){
         customLogger.log({
             level: 'error',
