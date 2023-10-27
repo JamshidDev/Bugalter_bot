@@ -4,6 +4,8 @@ const {
     conversations
 } = require("@grammyjs/conversations");
 
+const GeneralService = require("../service/services/GeneralService")
+
 
 const bot = new Composer();
 
@@ -51,7 +53,8 @@ bot.on("my_chat_member", async (ctx) => {
         for (let key of Object.keys(stats)) {
             await ctx.conversation.exit(key);
         }
-        // await remove_user(ctx.from.id)
+        // removing user from database
+        await GeneralService.remove_user(ctx.from.id)
     } else if (status === "administrator") {
         let data = {
             telegram_id: ctx.update.my_chat_member.chat.id,
@@ -84,6 +87,13 @@ bot.use(async (ctx, next) => {
     }
     await next()
 })
+
+
+
+
+
+
+
 
 
 

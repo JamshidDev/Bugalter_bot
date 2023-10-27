@@ -4,6 +4,7 @@
     "@grammyjs/i18n": "^1.0.1",
     "@grammyjs/menu": "^1.2.1",
     "@grammyjs/stateless-question": "^3.0.1",
+    "axios": "^1.6.0",
     "dotenv": "^16.3.1",
     "grammy": "^1.17.2",
     "mongoose": "^7.4.3",
