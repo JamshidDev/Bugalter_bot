@@ -73,4 +73,20 @@ finished_order_title = <b>🏁 Buyurtma bajarildi</b>
 reject_order_title =<b> 🛑 Sizning {$order_number} raqamli buyurtmangiz adminlar tomonidan raq etildi!</b>
 
     <b>💬 Sabab: </b> <i>{$comment}</i> 
-    Bog'lanish uchun: <b>+998(94) 683-83-40</b> 
+    Bog'lanish uchun: <b>+998(94) 683-83-40</b>
+
+
+stop_action =🔴 Bekor qilish
+
+back_to_main_menu =◀️ Asosiy menu
+main_menu_text_command = <i>⚡️Asosiy menu⚡️</i>
+
+premium_service_name = 💰 Pullik xizmatlar
+about_us_menu_name = ℹ️ Biz haqimizda
+
+free_service_menu_text = 🆓 Xizmatlar
+free_service_ikpu_search = 🔍 IKPU  qidiruv
+
+ikpu_search_text =🔍 Izlayotgan Debet va Kredit raqamlaringizni yozing!
+
+    Masalan: <b>2810</b>-<b>2010</b>

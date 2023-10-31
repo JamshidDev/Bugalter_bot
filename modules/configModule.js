@@ -133,7 +133,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 bot.use(async (ctx, next) => {
     const super_admin_list = [];
-    let command_list = [];
+    let command_list = [ctx.t("stop_action"), ctx.t("back_to_main_menu")];
     if (command_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {

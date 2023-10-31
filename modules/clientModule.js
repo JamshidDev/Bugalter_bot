@@ -1,6 +1,7 @@
 const {Composer,Keyboard, InlineKeyboard, InputFile, InputMediaDocument, InputMediaBuilder} = require("grammy");
 const GeneralService = require("../service/services/GeneralService")
 const { Menu, MenuRange } = require("@grammyjs/menu");
+const { I18n, hears } = require("@grammyjs/i18n");
 
 const {
     createConversation, conversations,
@@ -19,6 +20,7 @@ const pm = bot.chatType("private")
 
 
 pm.use(createConversation(task_data_conversation));
+pm.use(createConversation(search_ikpu_conversation));
 
 
 
@@ -38,8 +40,12 @@ async function task_data_conversation(conversation, ctx) {
     conversation.session.session_db.task.comment = null;
 
     // EDSP key files
+    let back_menu_btn = new Keyboard()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
     await ctx.reply(ctx.t("task_key_title"), {
         parse_mode: "HTML",
+        reply_markup:back_menu_btn
     });
 
     ctx = await conversation.wait();
@@ -133,6 +139,34 @@ async function task_data_conversation(conversation, ctx) {
 
 
 
+async function search_ikpu_conversation(conversation, ctx){
+    let stop_action = new Keyboard()
+        .text(ctx.t("stop_action"))
+        .placeholder("Debet-Kredit")
+        .resized()
+   let first_message = true;
+
+    do {
+        if(first_message){
+            await ctx.reply(ctx.t("ikpu_search_text"), {
+                parse_mode: "HTML",
+                reply_markup: stop_action,
+            });
+        }
+        first_message = false;
+        ctx = await conversation.wait();
+
+        if(ctx.msg.text){
+
+            await ctx.reply("success")
+        }else{
+
+            await ctx.reply("error")
+        }
+    } while (true);
+
+
+}
 
 
 // helper functions
@@ -177,12 +211,12 @@ pm.command("start", async (ctx)=>{
     const [error, res_data] = await  GeneralService.register_user({data});
 
     const main_menu = new Keyboard()
-        .text("💰 Bizning xizmatlar")
+        .text(ctx.t("premium_service_name"))
         .row()
-        .text("🆓 Xizmatlar")
+        .text(ctx.t("free_service_menu_text"))
         .text("🆕 Yangiliklar")
         .row()
-        .text("ℹ️ Biz haqimizda")
+        .text(ctx.t("about_us_menu_name"))
         .text("⚙️ Sozlamalar")
         .resized()
 
@@ -195,12 +229,6 @@ pm.command("start", async (ctx)=>{
     })
 })
 
-pm.hears("ℹ️ Biz haqimizda", async (ctx) => {
-    await ctx.replyWithPhoto(new InputFile("./resource/picture/document.jpg"), {
-        parse_mode:"HTML",
-        caption:`Kompaniyamiz kichik va o'rta biznes uchun yuqori sifatli buxgalteriya xizmatlarini taklif etadi. Biz buxgalteriya hisobi, soliqni rejalashtirish, moliyaviy tahlil va hisobotlarni o'z ichiga olgan to'liq xizmatlarni taklif etamiz. Bizning tajribali buxgalterlar jamoasi sizning biznesingizni rivojlantirishga e'tibor qaratishingiz uchun buxgalteriya hisobingiz to'g'ri va o'z vaqtida bo'lishini ta'minlaydi. Xizmatlarimiz haqida ko'proq ma'lumot olish, shuningdek muvaffaqiyatga erishishingizda sizga yordam berishimiz uchun biz bilan bog'laning.`
-    })
-})
 
 
 const premium_btn_list = new Menu("premium_btn_list")
@@ -223,17 +251,58 @@ const premium_btn_list = new Menu("premium_btn_list")
     })
 
 pm.use(premium_btn_list);
-pm.hears("💰 Bizning xizmatlar", async (ctx)=>{
+bot.filter(hears("premium_service_name"), async (ctx) => {
     await  ctx.reply("Kerakli xizmatni tanlang!", {
         parse_mode:"HTML",
         reply_markup:premium_btn_list,
 
     })
-})
+});
+
+bot.filter(hears("free_service_menu_text"), async (ctx) => {
+    btn_list = new Keyboard()
+        .text(ctx.t("free_service_ikpu_search"))
+        .row()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
+    await  ctx.reply("Xizmatni tanlang 👇", {
+        parse_mode:"HTML",
+        reply_markup:btn_list
+    })
+});
+bot.filter(hears("about_us_menu_name"), async (ctx) => {
+    await ctx.replyWithPhoto(new InputFile("./resource/picture/document.jpg"), {
+        parse_mode:"HTML",
+        caption:ctx.t("about_us_text")
+    })
+});
+bot.filter(hears("free_service_ikpu_search"), async (ctx) => {
+    await ctx.conversation.enter("search_ikpu_conversation");
+});
 
 
 
 
+
+// helper btn list
+
+bot.filter(hears("back_to_main_menu"), async (ctx) => {
+    const main_menu = new Keyboard()
+        .text(ctx.t("premium_service_name"))
+        .row()
+        .text("🆓 Xizmatlar")
+        .text("🆕 Yangiliklar")
+        .row()
+        .text(ctx.t("about_us_menu_name"))
+        .text("⚙️ Sozlamalar")
+        .resized()
+
+
+    await  ctx.reply(ctx.t("main_menu_text_command"), {
+        reply_markup:main_menu,
+        parse_mode:"HTML"
+    })
+});
 
 
 module.exports = bot;
