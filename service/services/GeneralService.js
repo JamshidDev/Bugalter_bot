@@ -27,7 +27,33 @@ const remove_user =async (payload) => {
     })
 }
 
+const register_admin = async(payload)=>{
+    return await axios.post(`/bot/admin`, payload.data).then((res) => {
+        return [null, res.data]
+    }).catch((error) => {
+        return [error, null]
+    })
+}
+const remove_admin =async (payload) => {
+    return await axios.delete(`/bot/admin/${payload}`).then((res) => {
+        return [null, res.data]
+    }).catch((error) => {
+        return [error, null]
+    })
+}
+
+const premium_services = async (payload)=>{
+    return await axios.get(`/bot/services`).then((res) => {
+        return [null, res.data]
+    }).catch((error) => {
+        return [error, null]
+    })
+}
 
 
 
-module.exports = {get_user_list,register_user, remove_user}
+
+
+
+
+module.exports = {premium_services,register_admin,remove_admin, get_user_list,register_user, remove_user}

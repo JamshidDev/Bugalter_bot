@@ -106,6 +106,7 @@ bot.use(conversations());
 
 bot.on("my_chat_member", async (ctx) => {
     let status = ctx.update.my_chat_member.new_chat_member.status;
+    console.log(status)
     if (status === "kicked") {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -122,11 +123,11 @@ bot.on("my_chat_member", async (ctx) => {
             type: ctx.update.my_chat_member.chat.type,
             new_chat: ctx.update.my_chat_member.new_chat_member, // object
         }
-        // registerChannel(data)
+        await GeneralService.register_admin({data})
     } else if (status === "left") {
-        console.log(ctx.update.my_chat_member.chat.id)
+        await GeneralService.remove_admin(ctx.update.my_chat_member.chat.id)
     } else if (status === "member") {
-        console.log(ctx.update.my_chat_member.chat.id)
+        await GeneralService.remove_admin(ctx.update.my_chat_member.chat.id)
     }
 });
 

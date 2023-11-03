@@ -233,13 +233,11 @@ pm.command("start", async (ctx)=>{
 
 const premium_btn_list = new Menu("premium_btn_list")
     .dynamic(async (ctx, range) => {
-        let list = [{
-            name:"Divident sol'ig'i",
-            _id:1
-        }];
+        const [error, res_data] = await  GeneralService.premium_services()
+        let list = res_data.data;
         list.forEach((item) => {
             range
-                .text(item.name, async (ctx) => {
+                .text(item.name_uz, async (ctx) => {
                     await ctx.answerCallbackQuery();
                     await ctx.deleteMessage();
                     ctx.session.session_db.selected_service = item;
@@ -252,11 +250,17 @@ const premium_btn_list = new Menu("premium_btn_list")
 
 pm.use(premium_btn_list);
 bot.filter(hears("premium_service_name"), async (ctx) => {
-    await  ctx.reply("Kerakli xizmatni tanlang!", {
-        parse_mode:"HTML",
-        reply_markup:premium_btn_list,
+    const [error, res] = await  GeneralService.premium_services()
+    if(res){
+        await  ctx.reply("Kerakli xizmatni tanlang!", {
+            parse_mode:"HTML",
+            reply_markup:premium_btn_list,
 
-    })
+        })
+    }else{
+        await ctx.reply("Hozirda pullik xizmatlar yopilgan!")
+    }
+
 });
 
 bot.filter(hears("free_service_menu_text"), async (ctx) => {
