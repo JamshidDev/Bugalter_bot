@@ -83,10 +83,31 @@ main_menu_text_command = <i>⚡️Asosiy menu⚡️</i>
 
 premium_service_name = 💰 Pullik xizmatlar
 about_us_menu_name = ℹ️ Biz haqimizda
+setting_menu_name = ⚙️ Sozlamalar
+free_service_menu_name = 🆓 Xizmatlar
+news_menu_name = 🆕 Yangiliklar
+change_language_title =🔄 Tilni o'zgartirish
+system_lang_uz =🇺🇿 O'zbek tili
+system_lang_ru =🇷🇺 Rus tili
 
-free_service_menu_text = 🆓 Xizmatlar
+
 free_service_ikpu_search = 🔍 IKPU  qidiruv
 
 ikpu_search_text =🔍 Izlayotgan Debet va Kredit raqamlaringizni yozing!
 
     Masalan: <b>2810</b>-<b>2010</b>
+
+invalid_search_msg = <i>⚠️ Noto'g'ri formatdagi xabar!</i>
+
+     <i>☝️ Izlayotgan Debet va Kredit raqamlaringizni quyidagi formatda yozing!</i>
+     Format: <b>2810</b>-<b>2010</b>
+
+no_fount_bank_text =🧐 Siz kiritgan debet va kredit raqamlar bo'yicha hech narsa topilmadi
+
+result_bank_text = <b>🎊Topilgan ma'lumotlar🎊</b>
+
+    Debet: <b>{$debet}</b>
+    Kredit: <b>{$kredit}</b>
+    Natija: <b>{$result}</b>
+
+loading_bank_text = 🔍 Qidirilmoqda...

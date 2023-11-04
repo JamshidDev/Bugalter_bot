@@ -1,7 +1,7 @@
 const {Composer, MemorySessionStorage, session} = require("grammy");
 const {I18n} = require("@grammyjs/i18n");
 const {conversations} = require("@grammyjs/conversations");
-
+const { hydrate  } =require("@grammyjs/hydrate");
 const GeneralService = require("../service/services/GeneralService")
 
 
@@ -103,10 +103,11 @@ const i18n = new I18n({
 });
 bot.use(i18n);
 bot.use(conversations());
+bot.use(hydrate());
+
 
 bot.on("my_chat_member", async (ctx) => {
     let status = ctx.update.my_chat_member.new_chat_member.status;
-    console.log(status)
     if (status === "kicked") {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {
@@ -134,7 +135,7 @@ bot.on("my_chat_member", async (ctx) => {
 
 bot.use(async (ctx, next) => {
     const super_admin_list = [];
-    let command_list = [ctx.t("stop_action"), ctx.t("back_to_main_menu")];
+    let command_list = [ctx.t("stop_action"), ctx.t("back_to_main_menu"), "/start"];
     if (command_list.includes(ctx.message?.text)) {
         const stats = await ctx.conversation.active();
         for (let key of Object.keys(stats)) {

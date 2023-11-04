@@ -21,6 +21,7 @@ const pm = bot.chatType("private")
 
 pm.use(createConversation(task_data_conversation));
 pm.use(createConversation(search_ikpu_conversation));
+pm.use(createConversation(main_menu_conversation));
 
 
 
@@ -137,8 +138,28 @@ async function task_data_conversation(conversation, ctx) {
 
 }
 
+async function main_menu_conversation(conversation, ctx){
+    const main_menu = new Keyboard()
+        .text(ctx.t("premium_service_name"))
+        .row()
+        .text(ctx.t("free_service_menu_name"))
+        .text(ctx.t("news_menu_name"))
+        .row()
+        .text(ctx.t("about_us_menu_name"))
+        .text(ctx.t("setting_menu_name"))
+        .resized()
 
 
+    await  ctx.reply(ctx.t("main_menu_text_command"), {
+        reply_markup:main_menu,
+        parse_mode:"HTML"
+    })
+    return;
+}
+
+ function validate_search_msg(msg){
+   return (msg.length == 9 && msg.includes("-"))? true : false
+}
 async function search_ikpu_conversation(conversation, ctx){
     let stop_action = new Keyboard()
         .text(ctx.t("stop_action"))
@@ -156,12 +177,38 @@ async function search_ikpu_conversation(conversation, ctx){
         first_message = false;
         ctx = await conversation.wait();
 
-        if(ctx.msg.text){
+        if(ctx.msg.text && validate_search_msg(ctx.msg.text)){
+           let  statusMessage = await ctx.reply(ctx.t("loading_bank_text"))
+           let debetAndKredit = ctx.msg.text.split("-")
+            let data = {
+                debet:debetAndKredit[0],
+                kredit:debetAndKredit[1],
+            }
+            const [error, res_data] = await GeneralService.search_bank(data)
 
-            await ctx.reply("success")
+            if(res_data.data.length == 0){
+                await ctx.reply(ctx.t("no_fount_bank_text"), {
+                    parse_mode:"HTML"
+                })
+            }else{
+                let data = res_data.data[0];
+                await ctx.reply(ctx.t("result_bank_text", {
+                    debet:data.debet,
+                    kredit:data.kredit,
+                    result:data.result_uz,
+                }), {
+
+                    parse_mode:"HTML"
+                })
+            }
+
+
+
         }else{
 
-            await ctx.reply("error")
+            await ctx.reply(ctx.t("invalid_search_msg"), {
+                parse_mode:"HTML"
+            })
         }
     } while (true);
 
@@ -208,16 +255,17 @@ pm.command("start", async (ctx)=>{
         referal_id:referral || null,
         lang: ctx.from.language_code
     }
-    const [error, res_data] = await  GeneralService.register_user({data});
+    await  GeneralService.register_user({data});
+
 
     const main_menu = new Keyboard()
         .text(ctx.t("premium_service_name"))
         .row()
-        .text(ctx.t("free_service_menu_text"))
-        .text("🆕 Yangiliklar")
+        .text(ctx.t("free_service_menu_name"))
+        .text(ctx.t("news_menu_name"))
         .row()
         .text(ctx.t("about_us_menu_name"))
-        .text("⚙️ Sozlamalar")
+        .text(ctx.t("setting_menu_name"))
         .resized()
 
 
@@ -262,8 +310,36 @@ bot.filter(hears("premium_service_name"), async (ctx) => {
     }
 
 });
+// setting menu btn
+bot.filter(hears("setting_menu_name"), async (ctx) => {
+        btn_list = new Keyboard()
+        .text(ctx.t("change_language_title"))
+        .row()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
+    await  ctx.reply(ctx.t("setting_menu_name"), {
+        parse_mode:"HTML",
+        reply_markup:btn_list
+    })
+});
 
-bot.filter(hears("free_service_menu_text"), async (ctx) => {
+// change language btn
+bot.filter(hears("change_language_title"), async (ctx) => {
+    btn_list = new Keyboard()
+        .text(ctx.t("system_lang_uz"))
+        .text(ctx.t("system_lang_ru"))
+        .row()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
+    await  ctx.reply(ctx.t("change_language_title"), {
+        parse_mode:"HTML",
+        reply_markup:btn_list
+    })
+});
+
+
+
+bot.filter(hears("free_service_menu_name"), async (ctx) => {
     btn_list = new Keyboard()
         .text(ctx.t("free_service_ikpu_search"))
         .row()
@@ -291,22 +367,10 @@ bot.filter(hears("free_service_ikpu_search"), async (ctx) => {
 // helper btn list
 
 bot.filter(hears("back_to_main_menu"), async (ctx) => {
-    const main_menu = new Keyboard()
-        .text(ctx.t("premium_service_name"))
-        .row()
-        .text("🆓 Xizmatlar")
-        .text("🆕 Yangiliklar")
-        .row()
-        .text(ctx.t("about_us_menu_name"))
-        .text("⚙️ Sozlamalar")
-        .resized()
-
-
-    await  ctx.reply(ctx.t("main_menu_text_command"), {
-        reply_markup:main_menu,
-        parse_mode:"HTML"
-    })
+    await ctx.conversation.enter("main_menu_conversation");
 });
-
+bot.filter(hears("stop_action"), async (ctx) => {
+    await ctx.conversation.enter("main_menu_conversation");
+});
 
 module.exports = bot;

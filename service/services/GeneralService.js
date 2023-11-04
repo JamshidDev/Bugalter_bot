@@ -50,10 +50,17 @@ const premium_services = async (payload)=>{
     })
 }
 
+const search_bank = async (payload)=>{
+    return await axios.get(`/bot/bank/${payload.debet}/${payload.kredit}`).then((res) => {
+        return [null, res.data]
+    }).catch((error) => {
+        return [error, null]
+    })
+}
 
 
 
 
 
 
-module.exports = {premium_services,register_admin,remove_admin, get_user_list,register_user, remove_user}
+module.exports = {search_bank, premium_services,register_admin,remove_admin, get_user_list,register_user, remove_user}
