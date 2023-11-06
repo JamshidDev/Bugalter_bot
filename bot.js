@@ -41,12 +41,15 @@ const Database_channel_id = -1001908517057;
 
 const config_bot = require("./modules/configModule")
 const client_bot = require("./modules/clientModule")
+const admin_bot = require("./modules/adminModule")
+
 
 const bot = new Bot(bot_token);
 
 
 bot.use(config_bot);
 bot.use(client_bot);
+bot.use(admin_bot);
 
 
 

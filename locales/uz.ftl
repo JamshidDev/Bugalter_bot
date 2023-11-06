@@ -79,13 +79,15 @@ reject_order_title =<b> 🛑 Sizning {$order_number} raqamli buyurtmangiz adminl
 stop_action =🔴 Bekor qilish
 
 back_to_main_menu =◀️ Asosiy menu
-main_menu_text_command = <i>⚡️Asosiy menu⚡️</i>
 
+
+// new version
+main_menu_text_command = <i>⚡️Asosiy menu⚡️</i>
 premium_service_name = 💰 Pullik xizmatlar
 about_us_menu_name = ℹ️ Biz haqimizda
 setting_menu_name = ⚙️ Sozlamalar
 free_service_menu_name = 🆓 Xizmatlar
-news_menu_name = 🆕 Yangiliklar
+news_order_menu_name = 📥 Buyurtmalarim
 change_language_title =🔄 Tilni o'zgartirish
 system_lang_uz =🇺🇿 O'zbek tili
 system_lang_ru =🇷🇺 Rus tili
@@ -104,10 +106,18 @@ invalid_search_msg = <i>⚠️ Noto'g'ri formatdagi xabar!</i>
 
 no_fount_bank_text =🧐 Siz kiritgan debet va kredit raqamlar bo'yicha hech narsa topilmadi
 
-result_bank_text = <b>🎊Topilgan ma'lumotlar🎊</b>
+
+loading_bank_text = 🔍 Qidirilmoqda...
+
+no_premium_service = Vaqtinchalik pullik xizmatlar yopilgan!
+premuim_service_list_title = 💰 Pullik xizmatlar!
+    Kerakli xizmat turini tanlang
+
+select_free_service =👇 Kerakli funksiyani tanlang!
+
+
+bank_result_message_text = <b>🎊Topilgan ma'lumotlar🎊</b>
 
     Debet: <b>{$debet}</b>
     Kredit: <b>{$kredit}</b>
-    Natija: <b>{$result}</b>
-
-loading_bank_text = 🔍 Qidirilmoqda...
+    O'tkazma: <b>{$result}</b>
