@@ -121,3 +121,10 @@ bank_result_message_text = <b>🎊Topilgan ma'lumotlar🎊</b>
     Debet: <b>{$debet}</b>
     Kredit: <b>{$kredit}</b>
     O'tkazma: <b>{$result}</b>
+
+
+
+
+
+
+back_to_setting_btn = 🔙 Sozlamalar

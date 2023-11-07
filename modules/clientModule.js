@@ -25,6 +25,9 @@ const pm = bot.chatType("private")
 pm.use(createConversation(task_data_conversation));
 pm.use(createConversation(search_ikpu_conversation));
 pm.use(createConversation(main_menu_conversation));
+pm.use(createConversation(start_menu_conversation));
+pm.use(createConversation(setting_section_conversation));
+pm.use(createConversation(free_services_section_conversation));
 
 
 
@@ -240,9 +243,54 @@ async function SendTask(msg_id, data, ctx) {
 
 }
 
+const about_company_menu = new Menu("about_company_menu")
+    .text("ℹ️ Biz haqimizda", async (ctx)=>{
+        await  ctx.answerCallbackQuery()
+        await ctx.replyWithPhoto(new InputFile("./resource/picture/document.jpg"), {
+            parse_mode:"HTML",
+            caption:ctx.t("about_us_text")
+        })
+    });
+pm.use(about_company_menu)
+async function start_menu_conversation(conversation, ctx) {
+    let client_id = ctx.from.id;
+    let photo_url ="AgACAgIAAxkBAAMPZUo7XU1s6Qd7C2_CiSSoSziksHwAAhnOMRvL91FKDGja6pryImMBAAMCAAN5AAMzBA";
+    await ctx.api.sendPhoto(client_id, photo_url, {
+        caption: ctx.t("start_addition"),
+        parse_mode: "HTML",
+        reply_markup: about_company_menu
+    })
+    await main_menu_conversation(conversation, ctx);
+    return
+}
 
 
+async function setting_section_conversation(conversation, ctx){
+    btn_list = new Keyboard()
+        .text(ctx.t("change_language_title"))
+        .row()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
+    await  ctx.reply(ctx.t("setting_menu_name"), {
+        parse_mode:"HTML",
+        reply_markup:btn_list
+    })
+    return
+}
 
+
+async function free_services_section_conversation(conversation, ctx){
+    btn_list = new Keyboard()
+        .text(ctx.t("free_service_ikpu_search"))
+        .row()
+        .text(ctx.t("back_to_main_menu"))
+        .resized()
+    await  ctx.reply(ctx.t("select_free_service"), {
+        parse_mode:"HTML",
+        reply_markup:btn_list
+    })
+    return
+}
 
 
 
@@ -270,12 +318,14 @@ pm.filter(async (ctx)=> !ctx.config.super_admin).command("start", async (ctx)=>{
         .resized()
 
 
-    await  ctx.reply(`
-👋 Salom ${ctx.from.first_name}, Xush kelibsiz!    
-    `, {
-        reply_markup:main_menu,
-        parse_mode:"HTML"
-    })
+//     await  ctx.reply(`
+// 👋 Salom ${ctx.from.first_name}, Xush kelibsiz!
+//     `, {
+//         reply_markup:main_menu,
+//         parse_mode:"HTML"
+//     })
+    await ctx.conversation.enter("start_menu_conversation");
+
 })
 
 
@@ -314,15 +364,7 @@ bot.filter(hears("premium_service_name"), async (ctx) => {
 });
 // setting menu btn
 bot.filter(hears("setting_menu_name"), async (ctx) => {
-        btn_list = new Keyboard()
-        .text(ctx.t("change_language_title"))
-        .row()
-        .text(ctx.t("back_to_main_menu"))
-        .resized()
-    await  ctx.reply(ctx.t("setting_menu_name"), {
-        parse_mode:"HTML",
-        reply_markup:btn_list
-    })
+    await ctx.conversation.enter("setting_section_conversation");
 });
 
 // change language btn
@@ -331,26 +373,22 @@ bot.filter(hears("change_language_title"), async (ctx) => {
         .text(ctx.t("system_lang_uz"))
         .text(ctx.t("system_lang_ru"))
         .row()
-        .text(ctx.t("back_to_main_menu"))
+        .text(ctx.t("back_to_setting_btn"))
         .resized()
     await  ctx.reply(ctx.t("change_language_title"), {
         parse_mode:"HTML",
         reply_markup:btn_list
     })
 });
+bot.filter(hears("back_to_setting_btn"), async (ctx) => {
+    await ctx.conversation.enter("setting_section_conversation");
+});
 
 
 
 bot.filter(hears("free_service_menu_name"), async (ctx) => {
-    btn_list = new Keyboard()
-        .text(ctx.t("free_service_ikpu_search"))
-        .row()
-        .text(ctx.t("back_to_main_menu"))
-        .resized()
-    await  ctx.reply(ctx.t("select_free_service"), {
-        parse_mode:"HTML",
-        reply_markup:btn_list
-    })
+    await ctx.conversation.enter("free_services_section_conversation");
+
 });
 bot.filter(hears("about_us_menu_name"), async (ctx) => {
     await ctx.replyWithPhoto(new InputFile("./resource/picture/document.jpg"), {
@@ -364,11 +402,11 @@ bot.filter(hears("free_service_ikpu_search"), async (ctx) => {
 
 bot.filter(hears("system_lang_uz"), async (ctx) => {
     await ctx.i18n.setLocale("uz");
-    await ctx.conversation.enter("main_menu_conversation");
+    await ctx.conversation.enter("setting_section_conversation");
 });
 bot.filter(hears("system_lang_ru"), async (ctx) => {
     await ctx.i18n.setLocale("ru");
-    await ctx.conversation.enter("main_menu_conversation");
+    await ctx.conversation.enter("setting_section_conversation");
 });
 
 
@@ -379,7 +417,7 @@ bot.filter(hears("back_to_main_menu"), async (ctx) => {
     await ctx.conversation.enter("main_menu_conversation");
 });
 bot.filter(hears("stop_action"), async (ctx) => {
-    await ctx.conversation.enter("main_menu_conversation");
+    await ctx.conversation.enter("free_services_section_conversation");
 });
 
 module.exports = bot;
