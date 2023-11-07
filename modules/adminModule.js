@@ -12,7 +12,7 @@ const { category_list, add_category, remove_category } = require("../controllers
 const { create_order, order_list, active_order, get_order, pricing_order, ordering_message_id, finish_order, find_order_for_payment, check_payment_order, paymenting_order, reject_order_info, reject_order } = require("../controllers/orderControllser");
 const { add_payment_histry, payment_details } = require("../controllers/paymentcontroller")
 
-
+const payme_tokent = process.env.PROVIDER_TOKEN;
 const bot = new Composer();
 
 
@@ -44,9 +44,8 @@ const payment_btn_menu = new Menu("payment_btn_menu")
         if (order.length == 1) {
             let order_id = order[0]._id;
             let price = order[0].payment_price
-
             let chat_id = ctx.chat.id;
-            let title = order[0].service_category?.name;
+            let title = order[0].service_category?.name_uz;
             let description = order[0].order_number + " raqamli buyurtmangizni bajarish uchun to'lov qilishingiz lozim!";
             let payload = order_id;
             let provider_token = payme_tokent;
@@ -66,10 +65,6 @@ const payment_btn_menu = new Menu("payment_btn_menu")
                 currency,
                 prices,
             );
-
-
-
-
         } else {
             ctx.reply(`⚠️ <i>Bu to'lov xabari eskirgan yoki to'lov miqdori o'zgargan!</i> \n\n Ma'lumot uchun: <b>+998(99) 501-60-04 </b>`, {
                 parse_mode: "HTML"

@@ -47,6 +47,93 @@ const admin_bot = require("./modules/adminModule")
 const bot = new Bot(bot_token);
 
 
+// bot.on(":successful_payment", async (ctx) => {
+//     await ctx.deleteMessage()
+//     let order_id = ctx.msg.successful_payment.invoice_payload;
+//     let order_price = ctx.msg.successful_payment.total_amount;
+//
+//
+//     let order = await paymenting_order(order_id)
+//     let data = {
+//         client_id: ctx.from.id,
+//         order_id: ctx.msg.successful_payment.invoice_payload,
+//         payment_amount: ctx.msg.successful_payment.total_amount/100,
+//         payment_details: ctx.msg.successful_payment
+//     }
+//     await add_payment_histry(data)
+//     await ctx.reply(`<b>To'lov amalga oshirildi</b>
+// 🔰 Buyurtma raqami: <b>${order.order_number}</b>
+// 💵 To'langan summa: <b>${order_price}</b> so'm `, {
+//         parse_mode: "HTML"
+//     })
+//
+//     await ctx.api.sendMessage(DEV_ID, `<b>To'lov amalga oshirildi</b>
+// 🔰 Buyurtma raqami: <b>${order.order_number}</b>
+// 💵 To'langan summa: <b>${order_price}</b> so'm `, {
+//         parse_mode: "HTML"
+//     })
+// })
+
+bot.on("pre_checkout_query", async (ctx) => {
+    console.log(ctx)
+    let pre_checkout_query_id = ctx.update.pre_checkout_query.id;
+    let order_id = ctx.update.pre_checkout_query.invoice_payload;
+    console.log(order_id)
+    let order = await check_payment_order(order_id);
+    console.log(order)
+
+    if (order.length == 1) {
+        await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, true);
+    } else {
+        await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, false, {
+            error_message: "Buyurtmaga to'lov qilish cheklangan"
+        });
+    }
+})
+
+bot.on(":successful_payment", async (ctx) => {
+    await ctx.deleteMessage()
+    let order_id = ctx.msg.successful_payment.invoice_payload;
+    let order_price = ctx.msg.successful_payment.total_amount;
+
+
+    let order = await paymenting_order(order_id)
+    let data = {
+        client_id: ctx.from.id,
+        order_id: ctx.msg.successful_payment.invoice_payload,
+        payment_amount: ctx.msg.successful_payment.total_amount/100,
+        payment_details: ctx.msg.successful_payment
+    }
+    await add_payment_histry(data)
+    await ctx.reply(`<b>To'lov amalga oshirildi</b>
+🔰 Buyurtma raqami: <b>${order.order_number}</b>
+💵 To'langan summa: <b>${order_price}</b> so'm `, {
+        parse_mode: "HTML"
+    })
+
+    await ctx.api.sendMessage(DEV_ID, `<b>To'lov amalga oshirildi</b>
+🔰 Buyurtma raqami: <b>${order.order_number}</b>
+💵 To'langan summa: <b>${order_price}</b> so'm `, {
+        parse_mode: "HTML"
+    })
+})
+
+// bot.on("pre_checkout_query", async (ctx) => {
+//     let pre_checkout_query_id = ctx.update.pre_checkout_query.id;
+//     let order_id = ctx.update.pre_checkout_query.invoice_payload;
+//     let order = await check_payment_order(order_id);
+//     if (order.length == 1) {
+//         await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, true);
+//     } else {
+//         await ctx.api.answerPreCheckoutQuery(pre_checkout_query_id, false, {
+//             error_message: "Buyurtmaga to'lov qilish cheklangan"
+//         });
+//     }
+// })
+
+
+
+
 bot.use(config_bot);
 bot.use(client_bot);
 bot.use(admin_bot);
